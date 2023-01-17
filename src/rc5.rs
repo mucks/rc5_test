@@ -37,6 +37,27 @@ impl Rc5 {
         }
     }
 
+    pub fn decode(&self, ciphertext: Vec<u8>, plaintext: &mut Vec<u8>) {
+        let slice_a: [u8; 4] = ciphertext[0..4].try_into().unwrap();
+        let ciphertext_a = i32::from_le_bytes(slice_a);
+        let slice_b: [u8; 4] = ciphertext[4..8].try_into().unwrap();
+        let ciphertext_b = i32::from_le_bytes(slice_b);
+
+        let mut a = ciphertext_a;
+        let mut b = ciphertext_b;
+
+        for i in (1..self.rounds + 1).rev() {
+            b = ((b.wrapping_sub(self.s[(2 * i + 1) as usize])).rotate_right(a as u32)) ^ a;
+            a = ((a.wrapping_sub(self.s[(2 * i) as usize])).rotate_right(b as u32)) ^ b;
+        }
+
+        a = a.wrapping_sub(self.s[0]);
+        b = b.wrapping_sub(self.s[1]);
+
+        plaintext.extend(a.to_le_bytes());
+        plaintext.extend(b.to_le_bytes());
+    }
+
     pub fn encode(&self, plaintext: Vec<u8>, ciphertext: &mut Vec<u8>) {
         let slice_a: [u8; 4] = plaintext[0..4].try_into().unwrap();
         let plaintext_a = i32::from_le_bytes(slice_a);
@@ -46,29 +67,15 @@ impl Rc5 {
         let mut a = self.s[0] + plaintext_a;
         let mut b = self.s[1] + plaintext_b;
 
-        println!("S[0]: {}", self.s[0]);
-        println!("pt[0]: {}", plaintext_a);
-        println!("S[1]: {}", self.s[1]);
-        println!("pt[1]: {}", plaintext_b);
-        println!("A: {}", a);
-        println!("B: {}", b);
-
         for i in 1..self.rounds + 1 {
             a = (a ^ b)
                 .rotate_left(b as u32)
                 .wrapping_add(self.s[(2 * i) as usize]);
 
-            println!("A{}: {}", i, a);
-
             b = (b ^ a)
                 .rotate_left(a as u32)
                 .wrapping_add(self.s[(2 * i + 1) as usize]);
-
-            println!("B{}: {}", i, b);
         }
-        println!("A: {}", a);
-        println!("B: {}", b);
-
         ciphertext.extend(a.to_le_bytes());
         ciphertext.extend(b.to_le_bytes());
     }

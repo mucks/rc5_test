@@ -68,8 +68,8 @@ where
 
     pub fn encode(&self, plaintext: Vec<u8>, ciphertext: &mut Vec<u8>) {
         let (plaintext_a, plaintext_b) = self.parse_bytes(plaintext);
-        let mut a = self.s[0] + plaintext_a;
-        let mut b = self.s[1] + plaintext_b;
+        let mut a = self.s[0].wadd(plaintext_a);
+        let mut b = self.s[1].wadd(plaintext_b);
 
         for i in 1..self.rounds + 1 {
             a = (a ^ b).rotl(b.into_u32()).wadd(self.s[(2 * i) as usize]);
@@ -95,6 +95,7 @@ where
         let mut l: Vec<T> = vec![T::zero(); c];
         l[c - 1] = T::zero();
 
+        // add index 3 BlockSize8 test fails
         for i in (0..b).rev() {
             l[i / u] = (l[i / u] << T::from_u32(8)) + T::from_u8(key[i]);
         }
@@ -107,8 +108,8 @@ where
     {
         let t = (2 * (self.rounds + 1)) as usize;
         let mut s: Vec<T> = vec![T::zero(); t];
-        let pw = T::from_i32(self.block_size.pw() as i32);
-        let qw = T::from_i32(self.block_size.qw() as i32);
+        let pw = T::from_u128(self.block_size.pw());
+        let qw = T::from_u128(self.block_size.qw());
 
         s[0] = pw;
         for i in 1..t {

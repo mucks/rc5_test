@@ -1,5 +1,6 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockSize {
+    BlockSize8 = 8,
     BlockSize16 = 16,
     BlockSize32 = 32,
     BlockSize64 = 64,
@@ -15,6 +16,7 @@ impl Default for BlockSize {
 impl BlockSize {
     pub fn range(&self) -> usize {
         match self {
+            BlockSize::BlockSize8 => 1,
             BlockSize::BlockSize16 => 2,
             BlockSize::BlockSize32 => 4,
             BlockSize::BlockSize64 => 8,
@@ -24,6 +26,7 @@ impl BlockSize {
     //Pw - The first magic constant, defined as Odd((e-2) * 2^w) where Odd is the nearest odd integer to the given input
     pub fn pw(&self) -> u128 {
         match self {
+            BlockSize::BlockSize8 => 0xB7,
             BlockSize::BlockSize16 => 0xB7E1,
             BlockSize::BlockSize32 => 0xB7E15163,
             BlockSize::BlockSize64 => 0xB7E151628AED2A6B,
@@ -33,6 +36,7 @@ impl BlockSize {
     //Qw - The second magic constant, defined as Odd((golden_ratio -1) * 2^w) where Odd is the nearest odd integer to the given input
     pub fn qw(&self) -> u128 {
         match self {
+            BlockSize::BlockSize8 => 0x9E,
             BlockSize::BlockSize16 => 0x9E37,
             BlockSize::BlockSize32 => 0x9E3779B9,
             BlockSize::BlockSize64 => 0x9E3779B97F4A7C15,

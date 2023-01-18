@@ -3,184 +3,153 @@ RC5 implementation in Rust
 algorithm source:
     https://en.wikipedia.org/wiki/RC5
 */
-
+use crate::error::Result;
+use crate::int::Int;
+use crate::{block_size::BlockSize, key_size::KeySize};
+use crate::{from_bytes, key_size};
 use std::convert::TryInto;
 
-// Should be 32-bit = 4 bytes
-type WORD = u32;
-
-pub struct Rc5 {
-    word_size_in_bits: u32,
-    rounds: u32,
-    key_length_in_bytes: u32,
-    s: Vec<i32>,
+pub struct Rc5<T> {
+    block_size: BlockSize,
+    key_size: KeySize,
+    rounds: u8,
+    s: Vec<T>,
 }
 
-impl Default for Rc5 {
+impl<T> Default for Rc5<T> {
     fn default() -> Self {
         Self {
-            word_size_in_bits: 32,
             rounds: 12,
-            key_length_in_bytes: 16,
             s: vec![],
+            block_size: BlockSize::default(),
+            key_size: KeySize::default(),
         }
     }
 }
 
-impl Rc5 {
-    pub fn new(word_size_in_bits: u32, rounds: u32, key_length_in_bytes: u32) -> Rc5 {
-        Rc5 {
-            word_size_in_bits,
+impl<T> Rc5<T>
+where
+    T: Int,
+{
+    pub fn new(block_size: BlockSize, rounds: u8, key_size: usize) -> Result<Rc5<T>> {
+        Ok(Self {
+            block_size,
             rounds,
-            key_length_in_bytes,
+            key_size: KeySize::new(key_size as u32)?,
             s: vec![],
-        }
+        })
     }
 
     pub fn decode(&self, ciphertext: Vec<u8>, plaintext: &mut Vec<u8>) {
-        let slice_a: [u8; 4] = ciphertext[0..4].try_into().unwrap();
-        let ciphertext_a = i32::from_le_bytes(slice_a);
-        let slice_b: [u8; 4] = ciphertext[4..8].try_into().unwrap();
-        let ciphertext_b = i32::from_le_bytes(slice_b);
-
+        let (ciphertext_a, ciphertext_b) = self.parse_bytes(ciphertext);
         let mut a = ciphertext_a;
         let mut b = ciphertext_b;
 
         for i in (1..self.rounds + 1).rev() {
-            b = ((b.wrapping_sub(self.s[(2 * i + 1) as usize])).rotate_right(a as u32)) ^ a;
-            a = ((a.wrapping_sub(self.s[(2 * i) as usize])).rotate_right(b as u32)) ^ b;
+            b = ((b.wsub(self.s[(2 * i + 1) as usize])).rotr(a.into_u32())) ^ a;
+            a = ((a.wsub(self.s[(2 * i) as usize])).rotr(b.into_u32())) ^ b;
         }
 
-        a = a.wrapping_sub(self.s[0]);
-        b = b.wrapping_sub(self.s[1]);
+        a = a.wsub(self.s[0]);
+        b = b.wsub(self.s[1]);
 
-        plaintext.extend(a.to_le_bytes());
-        plaintext.extend(b.to_le_bytes());
+        plaintext.extend(a.to_bytes());
+        plaintext.extend(b.to_bytes());
+    }
+
+    fn parse_bytes(&self, plaintext: Vec<u8>) -> (T, T) {
+        let range = self.block_size.range();
+        let mut slice_a: &[u8] = &plaintext[0..range];
+        let plaintext_a = T::from_bytes(&mut slice_a);
+        let mut slice_b: &[u8] = &plaintext[range..range * 2];
+        let plaintext_b = T::from_bytes(&mut slice_b);
+        (plaintext_a, plaintext_b)
     }
 
     pub fn encode(&self, plaintext: Vec<u8>, ciphertext: &mut Vec<u8>) {
-        let slice_a: [u8; 4] = plaintext[0..4].try_into().unwrap();
-        let plaintext_a = i32::from_le_bytes(slice_a);
-        let slice_b: [u8; 4] = plaintext[4..8].try_into().unwrap();
-        let plaintext_b = i32::from_le_bytes(slice_b);
-
+        let (plaintext_a, plaintext_b) = self.parse_bytes(plaintext);
         let mut a = self.s[0] + plaintext_a;
         let mut b = self.s[1] + plaintext_b;
 
         for i in 1..self.rounds + 1 {
-            a = (a ^ b)
-                .rotate_left(b as u32)
-                .wrapping_add(self.s[(2 * i) as usize]);
+            a = (a ^ b).rotl(b.into_u32()).wadd(self.s[(2 * i) as usize]);
 
             b = (b ^ a)
-                .rotate_left(a as u32)
-                .wrapping_add(self.s[(2 * i + 1) as usize]);
+                .rotl(a.into_u32())
+                .wadd(self.s[(2 * i + 1) as usize]);
         }
-        ciphertext.extend(a.to_le_bytes());
-        ciphertext.extend(b.to_le_bytes());
+        ciphertext.extend(a.to_bytes());
+        ciphertext.extend(b.to_bytes());
     }
 
-    fn generate_L(&self, key: &Vec<u8>) -> Vec<i32> {
-        let w = self.word_size_in_bits;
-        let b = self.key_length_in_bytes as usize;
+    fn generate_L(&self, key: &Vec<u8>) -> Vec<T>
+    where
+        T: Int,
+    {
+        let w = self.block_size as usize;
+        let b = self.key_size.0 as usize;
         let c = (8_f32 * b as f32 / w as f32).ceil().max(1.) as usize;
         // word size in bytes
-        let u = (self.word_size_in_bits / 8) as usize;
+        let u = (self.block_size as u32 / 8) as usize;
 
-        let mut l: Vec<i32> = vec![0; c];
-        l[c - 1] = 0;
+        let mut l: Vec<T> = vec![T::zero(); c];
+        l[c - 1] = T::zero();
 
         for i in (0..b).rev() {
-            l[i / u] = (l[i / u] << 8) + key[i] as i32;
+            l[i / u] = (l[i / u] << T::from_u32(8)) + T::from_u8(key[i]);
         }
         l
     }
 
-    fn generate_S(&self) -> Vec<i32> {
+    fn generate_S(&self) -> Vec<T>
+    where
+        T: Int,
+    {
         let t = (2 * (self.rounds + 1)) as usize;
-        let mut s: Vec<i32> = vec![0; t];
-        let pw = calculate_magic_constant_pw(self.word_size_in_bits);
-        let qw = calculate_magic_constant_qw(self.word_size_in_bits);
+        let mut s: Vec<T> = vec![T::zero(); t];
+        let pw = T::from_i32(self.block_size.pw() as i32);
+        let qw = T::from_i32(self.block_size.qw() as i32);
 
-        s[0] = pw as i32;
+        s[0] = pw;
         for i in 1..t {
-            s[i] = s[i - 1].wrapping_add(qw as i32);
+            s[i] = s[i - 1].wadd(qw);
         }
         s
     }
 
-    pub fn setup(&mut self, key: Vec<u8>) {
-        let w = self.word_size_in_bits;
-        let b = self.key_length_in_bytes as usize;
+    pub fn setup(&mut self, key: Vec<u8>)
+    where
+        T: Int,
+    {
+        let w = self.block_size as usize;
+        let b = self.key_size.0 as usize;
         // length of key in words
-        let c = (8_f64 * b as f64 / w as f64).ceil().max(1.) as usize;
+        let c = (8_f32 * b as f32 / w as f32).ceil().max(1.) as usize;
 
         // A temporary working array used during key scheduling. initialized to the key in words.
-        let mut l = self.generate_L(&key);
-        println!("L: {:?}", l);
-        let mut s = self.generate_S();
-        println!("S: {:?}", s);
+        let mut l: Vec<T> = self.generate_L(&key);
+        let mut s: Vec<T> = self.generate_S();
 
         let mut i = 0;
         let mut j = 0;
-        let mut a: i32 = 0;
-        let mut b: i32 = 0;
+        let mut a: T = T::zero();
+        let mut b: T = T::zero();
 
         let t = (2 * (self.rounds + 1)) as usize;
         let len = 3 * t.max(c);
 
         for _k in 0..len {
-            let ab: i32 = a.wrapping_add(b);
-            s[i] = s[i].wrapping_add(ab).rotate_left(3);
+            let ab: T = a.wadd(b);
+            s[i] = s[i].wadd(ab).rotl(3);
             a = s[i];
 
-            let ab: i32 = a.wrapping_add(b);
-            l[j] = l[j].wrapping_add(ab).rotate_left(ab as u32);
+            let ab: T = a.wadd(b);
+            l[j] = l[j].wadd(ab).rotl(ab.into_u32());
             b = l[j];
 
             i = (i + 1) % t;
             j = (j + 1) % c;
         }
         self.s = s;
-    }
-}
-
-//Pw - The first magic constant, defined as Odd((e-2) * 2^w) where Odd is the nearest odd integer to the given input
-fn calculate_magic_constant_pw(w: u32) -> u32 {
-    use std::f64::consts::E;
-
-    let d = (E - 2.) * (2_u64.pow(w) as f64);
-    odd(d)
-}
-
-//Qw - The second magic constant, defined as Odd((golden_ratio -1) * 2^w) where Odd is the nearest odd integer to the given input
-fn calculate_magic_constant_qw(w: u32) -> u32 {
-    let golden_ratio = (1. + 5_f64.sqrt()) / 2.;
-
-    let d = (golden_ratio - 1.) * (2_u64.pow(w) as f64);
-    odd(d)
-}
-
-// get nearest odd integer given a float
-fn odd(d: f64) -> u32 {
-    (((d + 1.) / 2.) * 2. - 1.).round() as u32
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn calculate_magic_constant_pw_test() {
-        assert_eq!(calculate_magic_constant_pw(16), 0xB7E1);
-        assert_eq!(calculate_magic_constant_pw(32), 0xB7E15163);
-        //TODO: fix this 'attempt to multiply with overflow'
-        //assert_eq!(calculate_magic_constant_pw(64), 0xB7E151628AED2A6B);
-    }
-
-    #[test]
-    fn calculate_magic_constant_qw_test() {
-        assert_eq!(calculate_magic_constant_qw(16), 0x9E37);
-        assert_eq!(calculate_magic_constant_qw(32), 0x9E3779B9);
     }
 }

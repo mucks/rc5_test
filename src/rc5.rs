@@ -6,8 +6,6 @@ algorithm source:
 use crate::error::Result;
 use crate::int::Int;
 use crate::{block_size::BlockSize, key_size::KeySize};
-use crate::{from_bytes, key_size};
-use std::convert::TryInto;
 
 pub struct Rc5<T> {
     block_size: BlockSize,
@@ -40,23 +38,6 @@ where
         })
     }
 
-    pub fn decode(&self, ciphertext: Vec<u8>, plaintext: &mut Vec<u8>) {
-        let (ciphertext_a, ciphertext_b) = self.parse_bytes(ciphertext);
-        let mut a = ciphertext_a;
-        let mut b = ciphertext_b;
-
-        for i in (1..self.rounds + 1).rev() {
-            b = ((b.wsub(self.s[(2 * i + 1) as usize])).rotr(a.into_u32())) ^ a;
-            a = ((a.wsub(self.s[(2 * i) as usize])).rotr(b.into_u32())) ^ b;
-        }
-
-        a = a.wsub(self.s[0]);
-        b = b.wsub(self.s[1]);
-
-        plaintext.extend(a.to_bytes());
-        plaintext.extend(b.to_bytes());
-    }
-
     fn parse_bytes(&self, plaintext: Vec<u8>) -> (T, T) {
         let range = self.block_size.range();
         let mut slice_a: &[u8] = &plaintext[0..range];
@@ -82,6 +63,23 @@ where
         ciphertext.extend(b.to_bytes());
     }
 
+    pub fn decode(&self, ciphertext: Vec<u8>, plaintext: &mut Vec<u8>) {
+        let (ciphertext_a, ciphertext_b) = self.parse_bytes(ciphertext);
+        let mut a = ciphertext_a;
+        let mut b = ciphertext_b;
+
+        for i in (1..self.rounds + 1).rev() {
+            b = ((b.wsub(self.s[(2 * i + 1) as usize])).rotr(a.into_u32())) ^ a;
+            a = ((a.wsub(self.s[(2 * i) as usize])).rotr(b.into_u32())) ^ b;
+        }
+
+        a = a.wsub(self.s[0]);
+        b = b.wsub(self.s[1]);
+
+        plaintext.extend(a.to_bytes());
+        plaintext.extend(b.to_bytes());
+    }
+
     fn generate_L(&self, key: &Vec<u8>) -> Vec<T>
     where
         T: Int,
@@ -95,10 +93,10 @@ where
         let mut l: Vec<T> = vec![T::zero(); c];
         l[c - 1] = T::zero();
 
-        // add index 3 BlockSize8 test fails
         for i in (0..b).rev() {
             l[i / u] = (l[i / u] << T::from_u32(8)) + T::from_u8(key[i]);
         }
+
         l
     }
 

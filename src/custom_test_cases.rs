@@ -44,121 +44,113 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::hex::{decode_hex, encode_hex};
+    use crate::error::Result;
+    use crate::hex::decode_hex;
 
     use super::*;
 
-    #[test]
-    fn encode_a_from_hex_str() {
-        let key = decode_hex("000102030405060708090A0B0C0D0E0F").unwrap();
-        let pt = decode_hex("0011223344556677").unwrap();
-        let ct = decode_hex("2DDC149BCF088B9E").unwrap();
-        let res = encode::<i32>(BlockSize::BlockSize32, 12, 16, key, pt);
-        assert!(&ct[..] == &res[..]);
+    fn parse_key_ct_pt(key: &str, pt: &str, ct: &str) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        Ok((decode_hex(key)?, decode_hex(pt)?, decode_hex(ct)?))
+    }
+
+    fn rc5_8_12_4() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "00010203";
+        let pt = "0001";
+        let ct = "212A";
+        parse_key_ct_pt(key, pt, ct)
+    }
+    fn rc5_16_16_8() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "0001020304050607";
+        let pt = "00010203";
+        let ct = "23A8D72E";
+        parse_key_ct_pt(key, pt, ct)
+    }
+    fn rc5_32_20_16() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "000102030405060708090A0B0C0D0E0F";
+        let pt = "0001020304050607";
+        let ct = "2A0EDC0E9431FF73";
+        parse_key_ct_pt(key, pt, ct)
+    }
+    fn rc5_64_24_24() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "000102030405060708090A0B0C0D0E0F1011121314151617";
+        let pt = "000102030405060708090A0B0C0D0E0F";
+        let ct = "A46772820EDBCE0235ABEA32AE7178DA";
+        parse_key_ct_pt(key, pt, ct)
+    }
+
+    fn rc5_128_28_32() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F";
+        let pt = "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F";
+        let ct = "ECA5910921A4F4CFDD7AD7AD20A1FCBA068EC7A7CD752D68FE914B7FE180B440";
+        parse_key_ct_pt(key, pt, ct)
     }
 
     #[test]
     fn encode_rc5_8_12_4() {
-        let key = decode_hex("00010203").unwrap();
-        let pt = decode_hex("0001").unwrap();
-        let ct = decode_hex("212A").unwrap();
+        let (key, pt, ct) = rc5_8_12_4().unwrap();
         let res = encode::<i8>(BlockSize::BlockSize8, 12, 4, key, pt);
-        println!("{} == {}", encode_hex(&ct), encode_hex(&res));
         assert!(&ct[..] == &res[..]);
-    }
-
-    #[test]
-    fn encode_rc5_16_16_8() {
-        let key = decode_hex("0001020304050607").unwrap();
-        let pt = decode_hex("00010203").unwrap();
-        let ct = decode_hex("23A8D72E").unwrap();
-        let res = encode::<i16>(BlockSize::BlockSize16, 16, 8, key, pt);
-        assert!(&ct[..] == &res[..]);
-    }
-
-    #[test]
-    fn encode_rc_32_20_16() {
-        let key = decode_hex("000102030405060708090A0B0C0D0E0F").unwrap();
-        let pt = decode_hex("0001020304050607").unwrap();
-        let ct = decode_hex("2A0EDC0E9431FF73").unwrap();
-        let res = encode::<i32>(BlockSize::BlockSize32, 20, 16, key, pt);
-        assert!(&ct[..] == &res[..]);
-    }
-
-    #[test]
-    fn encode_rc_64_24_24() {
-        let key = decode_hex("000102030405060708090A0B0C0D0E0F1011121314151617").unwrap();
-        let pt = decode_hex("000102030405060708090A0B0C0D0E0F").unwrap();
-        let ct = decode_hex("A46772820EDBCE0235ABEA32AE7178DA").unwrap();
-        let res = encode::<i64>(BlockSize::BlockSize64, 24, 24, key, pt);
-        assert!(&ct[..] == &res[..]);
-    }
-
-    #[test]
-    fn encode_rc_128_28_32() {
-        let key =
-            decode_hex("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F").unwrap();
-        let pt =
-            decode_hex("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F").unwrap();
-        let ct =
-            decode_hex("ECA5910921A4F4CFDD7AD7AD20A1FCBA068EC7A7CD752D68FE914B7FE180B440").unwrap();
-        let res = encode::<i128>(BlockSize::BlockSize128, 28, 32, key, pt);
-        assert!(&ct[..] == &res[..]);
-    }
-
-    #[test]
-    fn decode_a_from_hex_str() {
-        let key = decode_hex("000102030405060708090A0B0C0D0E0F").unwrap();
-        let pt = decode_hex("0011223344556677").unwrap();
-        let ct = decode_hex("2DDC149BCF088B9E").unwrap();
-        let res = decode::<i32>(BlockSize::BlockSize32, 12, 16, key, ct);
-        assert!(&pt[..] == &res[..]);
     }
 
     #[test]
     fn decode_rc5_8_12_4() {
-        let key = decode_hex("00010203").unwrap();
-        let pt = decode_hex("0001").unwrap();
-        let ct = decode_hex("212A").unwrap();
+        let (key, pt, ct) = rc5_8_12_4().unwrap();
         let res = decode::<i8>(BlockSize::BlockSize8, 12, 4, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
+    fn encode_rc5_16_16_8() {
+        let (key, pt, ct) = rc5_16_16_8().unwrap();
+        let res = encode::<i16>(BlockSize::BlockSize16, 16, 8, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
     fn decode_rc5_16_16_8() {
-        let key = decode_hex("0001020304050607").unwrap();
-        let pt = decode_hex("00010203").unwrap();
-        let ct = decode_hex("23A8D72E").unwrap();
+        let (key, pt, ct) = rc5_16_16_8().unwrap();
         let res = decode::<i16>(BlockSize::BlockSize16, 16, 8, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
+    fn encode_rc_32_20_16() {
+        let (key, pt, ct) = rc5_32_20_16().unwrap();
+        let res = encode::<i32>(BlockSize::BlockSize32, 20, 16, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
     fn decode_rc_32_20_16() {
-        let key = decode_hex("000102030405060708090A0B0C0D0E0F").unwrap();
-        let pt = decode_hex("0001020304050607").unwrap();
-        let ct = decode_hex("2A0EDC0E9431FF73").unwrap();
+        let (key, pt, ct) = rc5_32_20_16().unwrap();
         let res = decode::<i32>(BlockSize::BlockSize32, 20, 16, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
+    fn encode_rc_64_24_24() {
+        let (key, pt, ct) = rc5_64_24_24().unwrap();
+        let res = encode::<i64>(BlockSize::BlockSize64, 24, 24, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
     fn decode_rc_64_24_24() {
-        let key = decode_hex("000102030405060708090A0B0C0D0E0F1011121314151617").unwrap();
-        let pt = decode_hex("000102030405060708090A0B0C0D0E0F").unwrap();
-        let ct = decode_hex("A46772820EDBCE0235ABEA32AE7178DA").unwrap();
+        let (key, pt, ct) = rc5_64_24_24().unwrap();
         let res = decode::<i64>(BlockSize::BlockSize64, 24, 24, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
+    fn encode_rc_128_28_32() {
+        let (key, pt, ct) = rc5_128_28_32().unwrap();
+        let res = encode::<i128>(BlockSize::BlockSize128, 28, 32, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
     fn decode_rc_128_28_32() {
-        let key =
-            decode_hex("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F").unwrap();
-        let pt =
-            decode_hex("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F").unwrap();
-        let ct =
-            decode_hex("ECA5910921A4F4CFDD7AD7AD20A1FCBA068EC7A7CD752D68FE914B7FE180B440").unwrap();
+        let (key, pt, ct) = rc5_128_28_32().unwrap();
         let res = decode::<i128>(BlockSize::BlockSize128, 28, 32, key, ct);
         assert!(&pt[..] == &res[..]);
     }

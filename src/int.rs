@@ -1,4 +1,4 @@
-use std::ops::{Add, BitXor, Shl, Sub};
+use std::ops::{Add, BitOr, BitXor, Shl, Shr, Sub};
 
 use crate::from_bytes::FromBytes;
 use std::fmt::Debug;
@@ -7,7 +7,9 @@ pub trait Int:
     Add<Output = Self>
     + Sub<Output = Self>
     + Shl<Output = Self>
+    + Shr<Output = Self>
     + BitXor<Output = Self>
+    + BitOr<Output = Self>
     + PartialEq
     + Copy
     + Debug

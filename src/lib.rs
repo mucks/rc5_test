@@ -1,11 +1,10 @@
-mod block_size;
 mod custom_test_cases;
 mod error;
 mod from_bytes;
 mod hex;
-mod int;
 mod key_size;
 mod rc5;
+mod u_int;
 
 use rc5::Rc5;
 /*
@@ -13,7 +12,7 @@ use rc5::Rc5;
  *
  */
 fn encode(key: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8> {
-    let mut rc5: Rc5<i32> = Rc5::default();
+    let mut rc5: Rc5<u32> = Rc5::default();
     rc5.setup(key);
     let mut ciphertext = Vec::new();
     rc5.encode(plaintext, &mut ciphertext);
@@ -25,7 +24,7 @@ fn encode(key: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8> {
  *
  */
 fn decode(key: Vec<u8>, ciphertext: Vec<u8>) -> Vec<u8> {
-    let mut rc5: Rc5<i32> = Rc5::default();
+    let mut rc5: Rc5<u32> = Rc5::default();
     rc5.setup(key);
     let mut plaintext = Vec::new();
     rc5.decode(ciphertext, &mut plaintext);

@@ -1,20 +1,14 @@
-use crate::{block_size::BlockSize, int::Int, rc5::Rc5};
+use crate::{rc5::Rc5, u_int::UInt};
 
 /*
  * This function should return a cipher text for a given key and plaintext
  *
  */
-fn encode<T>(
-    block_size: BlockSize,
-    rounds: u8,
-    key_size: usize,
-    key: Vec<u8>,
-    plaintext: Vec<u8>,
-) -> Vec<u8>
+fn encode<T>(rounds: u8, key_size: usize, key: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8>
 where
-    T: Int,
+    T: UInt,
 {
-    let mut rc5: Rc5<T> = Rc5::new(block_size, rounds, key_size).unwrap();
+    let mut rc5: Rc5<T> = Rc5::new(rounds, key_size).unwrap();
     rc5.setup(key);
     let mut ciphertext = Vec::new();
     rc5.encode(plaintext, &mut ciphertext);
@@ -25,17 +19,11 @@ where
  * This function should return a plaintext for a given key and ciphertext
  *
  */
-fn decode<T>(
-    block_size: BlockSize,
-    rounds: u8,
-    key_size: usize,
-    key: Vec<u8>,
-    ciphertext: Vec<u8>,
-) -> Vec<u8>
+fn decode<T>(rounds: u8, key_size: usize, key: Vec<u8>, ciphertext: Vec<u8>) -> Vec<u8>
 where
-    T: Int,
+    T: UInt,
 {
-    let mut rc5: Rc5<T> = Rc5::new(block_size, rounds, key_size).unwrap();
+    let mut rc5: Rc5<T> = Rc5::new(rounds, key_size).unwrap();
     rc5.setup(key);
     let mut plaintext = Vec::new();
     rc5.decode(ciphertext, &mut plaintext);
@@ -45,7 +33,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::error::Result;
-    use crate::hex::decode_hex;
+    use crate::hex::{decode_hex, encode_hex};
 
     use super::*;
 
@@ -88,70 +76,71 @@ mod tests {
     #[test]
     fn encode_rc5_8_12_4() {
         let (key, pt, ct) = rc5_8_12_4().unwrap();
-        let res = encode::<i8>(BlockSize::BlockSize8, 12, 4, key, pt);
+        let res = encode::<u8>(12, 4, key, pt);
+        println!("{} == {:?}", encode_hex(&res), encode_hex(&ct));
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
     fn decode_rc5_8_12_4() {
         let (key, pt, ct) = rc5_8_12_4().unwrap();
-        let res = decode::<i8>(BlockSize::BlockSize8, 12, 4, key, ct);
+        let res = decode::<u8>(12, 4, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
     fn encode_rc5_16_16_8() {
         let (key, pt, ct) = rc5_16_16_8().unwrap();
-        let res = encode::<i16>(BlockSize::BlockSize16, 16, 8, key, pt);
+        let res = encode::<u16>(16, 8, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
     fn decode_rc5_16_16_8() {
         let (key, pt, ct) = rc5_16_16_8().unwrap();
-        let res = decode::<i16>(BlockSize::BlockSize16, 16, 8, key, ct);
+        let res = decode::<u16>(16, 8, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
     fn encode_rc_32_20_16() {
         let (key, pt, ct) = rc5_32_20_16().unwrap();
-        let res = encode::<i32>(BlockSize::BlockSize32, 20, 16, key, pt);
+        let res = encode::<u32>(20, 16, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
     fn decode_rc_32_20_16() {
         let (key, pt, ct) = rc5_32_20_16().unwrap();
-        let res = decode::<i32>(BlockSize::BlockSize32, 20, 16, key, ct);
+        let res = decode::<u32>(20, 16, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
     fn encode_rc_64_24_24() {
         let (key, pt, ct) = rc5_64_24_24().unwrap();
-        let res = encode::<i64>(BlockSize::BlockSize64, 24, 24, key, pt);
+        let res = encode::<u64>(24, 24, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
     fn decode_rc_64_24_24() {
         let (key, pt, ct) = rc5_64_24_24().unwrap();
-        let res = decode::<i64>(BlockSize::BlockSize64, 24, 24, key, ct);
+        let res = decode::<u64>(24, 24, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
     fn encode_rc_128_28_32() {
         let (key, pt, ct) = rc5_128_28_32().unwrap();
-        let res = encode::<i128>(BlockSize::BlockSize128, 28, 32, key, pt);
+        let res = encode::<u128>(28, 32, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
     fn decode_rc_128_28_32() {
         let (key, pt, ct) = rc5_128_28_32().unwrap();
-        let res = decode::<i128>(BlockSize::BlockSize128, 28, 32, key, ct);
+        let res = decode::<u128>(28, 32, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 }

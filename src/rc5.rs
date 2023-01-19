@@ -4,11 +4,10 @@ algorithm source:
     https://en.wikipedia.org/wiki/RC5
 */
 use crate::error::Result;
-use crate::int::Int;
-use crate::{block_size::BlockSize, key_size::KeySize};
+use crate::key_size::KeySize;
+use crate::u_int::UInt;
 
 pub struct Rc5<T> {
-    block_size: BlockSize,
     key_size: KeySize,
     rounds: u8,
     s: Vec<T>,
@@ -19,7 +18,6 @@ impl<T> Default for Rc5<T> {
         Self {
             rounds: 12,
             s: vec![],
-            block_size: BlockSize::default(),
             key_size: KeySize::default(),
         }
     }
@@ -27,11 +25,10 @@ impl<T> Default for Rc5<T> {
 
 impl<T> Rc5<T>
 where
-    T: Int,
+    T: UInt,
 {
-    pub fn new(block_size: BlockSize, rounds: u8, key_size: usize) -> Result<Rc5<T>> {
+    pub fn new(rounds: u8, key_size: usize) -> Result<Rc5<T>> {
         Ok(Self {
-            block_size,
             rounds,
             key_size: KeySize::new(key_size as u32)?,
             s: vec![],
@@ -39,7 +36,7 @@ where
     }
 
     fn parse_bytes(&self, plaintext: Vec<u8>) -> (T, T) {
-        let range = self.block_size.range();
+        let range = T::range();
         let mut slice_a: &[u8] = &plaintext[0..range];
         let plaintext_a = T::from_bytes(&mut slice_a);
         let mut slice_b: &[u8] = &plaintext[range..range * 2];
@@ -80,15 +77,12 @@ where
         plaintext.extend(b.to_bytes());
     }
 
-    fn generate_L(&self, key: &Vec<u8>) -> Vec<T>
-    where
-        T: Int,
-    {
-        let w = self.block_size as usize;
+    fn generate_L(&self, key: &Vec<u8>) -> Vec<T> {
+        let w = T::block_size();
         let b = self.key_size.0 as usize;
         let c = (8_f32 * b as f32 / w as f32).ceil().max(1.) as usize;
         // word size in bytes
-        let u = (self.block_size as u32 / 8) as usize;
+        let u = T::block_size() / 8;
 
         let mut l: Vec<T> = vec![T::zero(); c];
         l[c - 1] = T::zero();
@@ -100,14 +94,11 @@ where
         l
     }
 
-    fn generate_S(&self) -> Vec<T>
-    where
-        T: Int,
-    {
+    fn generate_S(&self) -> Vec<T> {
         let t = (2 * (self.rounds + 1)) as usize;
         let mut s: Vec<T> = vec![T::zero(); t];
-        let pw = T::from_u128(self.block_size.pw());
-        let qw = T::from_u128(self.block_size.qw());
+        let pw = T::pw();
+        let qw = T::qw();
 
         s[0] = pw;
         for i in 1..t {
@@ -116,11 +107,8 @@ where
         s
     }
 
-    pub fn setup(&mut self, key: Vec<u8>)
-    where
-        T: Int,
-    {
-        let w = self.block_size as usize;
+    pub fn setup(&mut self, key: Vec<u8>) {
+        let w = T::block_size();
         let b = self.key_size.0 as usize;
         // length of key in words
         let c = (8_f32 * b as f32 / w as f32).ceil().max(1.) as usize;

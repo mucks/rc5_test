@@ -9,6 +9,7 @@ use crate::u_int::UInt;
 
 pub struct Rc5<T> {
     key_size: KeySize,
+    // The number of rounds to use when encrypting data.
     rounds: u8,
     s: Vec<T>,
 }
@@ -46,16 +47,15 @@ where
 
     pub fn encode(&self, plaintext: Vec<u8>, ciphertext: &mut Vec<u8>) {
         let (plaintext_a, plaintext_b) = self.parse_bytes(plaintext);
+
         let mut a = self.s[0].wadd(plaintext_a);
         let mut b = self.s[1].wadd(plaintext_b);
 
-        for i in 1..self.rounds + 1 {
-            a = (a ^ b).rotl(b.into_u32()).wadd(self.s[(2 * i) as usize]);
-
-            b = (b ^ a)
-                .rotl(a.into_u32())
-                .wadd(self.s[(2 * i + 1) as usize]);
+        for i in 1..(self.rounds + 1) as usize {
+            a = (a ^ b).rotl(b.into_u32()).wadd(self.s[2 * i]);
+            b = (b ^ a).rotl(a.into_u32()).wadd(self.s[2 * i + 1]);
         }
+
         ciphertext.extend(a.to_bytes());
         ciphertext.extend(b.to_bytes());
     }
@@ -65,9 +65,9 @@ where
         let mut a = ciphertext_a;
         let mut b = ciphertext_b;
 
-        for i in (1..self.rounds + 1).rev() {
-            b = ((b.wsub(self.s[(2 * i + 1) as usize])).rotr(a.into_u32())) ^ a;
-            a = ((a.wsub(self.s[(2 * i) as usize])).rotr(b.into_u32())) ^ b;
+        for i in (1..(self.rounds + 1) as usize).rev() {
+            b = ((b.wsub(self.s[2 * i + 1])).rotr(a.into_u32())) ^ a;
+            a = ((a.wsub(self.s[2 * i])).rotr(b.into_u32())) ^ b;
         }
 
         a = a.wsub(self.s[0]);
@@ -77,43 +77,53 @@ where
         plaintext.extend(b.to_bytes());
     }
 
+    //The length of a word in bytes.
+    fn u(&self) -> usize {
+        T::w() / 8
+    }
+
+    // The length of the key in bytes.
+    fn b(&self) -> usize {
+        self.key_size.0 as usize
+    }
+
+    // The length of the key in words (or 1, if b = 0).
+    fn c(&self) -> usize {
+        // length of key in words
+        (8_f32 * self.b() as f32 / T::w() as f32).ceil().max(1.) as usize
+    }
+
+    // size of table S in blocks
+    fn t(&self) -> usize {
+        (2 * (self.rounds + 1)) as usize
+    }
+
+    // L is initially a c-length list of 0-valued w-length words
+    // A temporary working array used during key scheduling. initialized to the key in words.
     fn generate_L(&self, key: &Vec<u8>) -> Vec<T> {
-        let w = T::block_size();
-        let b = self.key_size.0 as usize;
-        let c = (8_f32 * b as f32 / w as f32).ceil().max(1.) as usize;
-        // word size in bytes
-        let u = T::block_size() / 8;
+        let mut l: Vec<T> = vec![T::zero(); self.c()];
+        l[self.c() - 1] = T::zero();
 
-        let mut l: Vec<T> = vec![T::zero(); c];
-        l[c - 1] = T::zero();
-
-        for i in (0..b).rev() {
-            l[i / u] = (l[i / u] << T::from_u32(8)) + T::from_u8(key[i]);
+        for i in (0..self.b()).rev() {
+            let iu = i / self.u();
+            l[iu] = l[iu].rotl(8) + T::from_u8(key[i]);
         }
 
         l
     }
-
+    //Initialize key-independent pseudorandom S array
+    //S is initially a t=2(r+1) length list of undefined w-length words
     fn generate_S(&self) -> Vec<T> {
-        let t = (2 * (self.rounds + 1)) as usize;
-        let mut s: Vec<T> = vec![T::zero(); t];
-        let pw = T::pw();
-        let qw = T::qw();
+        let mut s: Vec<T> = vec![T::zero(); self.t()];
 
-        s[0] = pw;
-        for i in 1..t {
-            s[i] = s[i - 1].wadd(qw);
+        s[0] = T::pw();
+        for i in 1..self.t() {
+            s[i] = s[i - 1].wadd(T::qw());
         }
         s
     }
 
     pub fn setup(&mut self, key: Vec<u8>) {
-        let w = T::block_size();
-        let b = self.key_size.0 as usize;
-        // length of key in words
-        let c = (8_f32 * b as f32 / w as f32).ceil().max(1.) as usize;
-
-        // A temporary working array used during key scheduling. initialized to the key in words.
         let mut l: Vec<T> = self.generate_L(&key);
         let mut s: Vec<T> = self.generate_S();
 
@@ -122,9 +132,9 @@ where
         let mut a: T = T::zero();
         let mut b: T = T::zero();
 
-        let t = (2 * (self.rounds + 1)) as usize;
-        let len = 3 * t.max(c);
+        let len = 3 * self.t().max(self.c());
 
+        // The main key scheduling loop
         for _k in 0..len {
             let ab: T = a.wadd(b);
             s[i] = s[i].wadd(ab).rotl(3);
@@ -134,8 +144,8 @@ where
             l[j] = l[j].wadd(ab).rotl(ab.into_u32());
             b = l[j];
 
-            i = (i + 1) % t;
-            j = (j + 1) % c;
+            i = (i + 1) % self.t();
+            j = (j + 1) % self.c();
         }
         self.s = s;
     }

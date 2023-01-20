@@ -1,3 +1,5 @@
+use tracing::debug;
+
 /*
 RC5 implementation in Rust
 algorithm source:
@@ -101,29 +103,41 @@ where
     // L is initially a c-length list of 0-valued w-length words
     // A temporary working array used during key scheduling. initialized to the key in words.
     fn generate_L(&self, key: &Vec<u8>) -> Vec<T> {
+        debug!("<generate_L>");
         let mut l: Vec<T> = vec![T::zero(); self.c()];
         l[self.c() - 1] = T::zero();
 
         for i in (0..self.b()).rev() {
             let iu = i / self.u();
-            l[iu] = l[iu].rotl(8) + T::from_u8(key[i]);
-        }
 
+            let r = l[iu].rotl(8);
+            debug!("{iu}: {:b} << 8 = {:b}", l[iu], r);
+
+            let k = T::from_u8(key[i]);
+            let f = r + T::from_u8(key[i]);
+            debug!("{iu}: {:b} + {:b} = {:b}", r, k, f);
+
+            l[iu] = f;
+        }
+        debug!("</generate_L>");
         l
     }
     //Initialize key-independent pseudorandom S array
     //S is initially a t=2(r+1) length list of undefined w-length words
     fn generate_S(&self) -> Vec<T> {
+        debug!("<generate_S>");
         let mut s: Vec<T> = vec![T::zero(); self.t()];
 
         s[0] = T::pw();
         for i in 1..self.t() {
             s[i] = s[i - 1].wadd(T::qw());
         }
+        debug!("</generate_S>");
         s
     }
 
     pub fn setup(&mut self, key: Vec<u8>) {
+        debug!("<setup>");
         let mut l: Vec<T> = self.generate_L(&key);
         let mut s: Vec<T> = self.generate_S();
 
@@ -147,6 +161,7 @@ where
             i = (i + 1) % self.t();
             j = (j + 1) % self.c();
         }
+        debug!("</setup>");
         self.s = s;
     }
 }

@@ -1,4 +1,7 @@
-use std::ops::{Add, BitOr, BitXor, Shl, Shr, Sub};
+use std::{
+    fmt::{Binary, Display},
+    ops::{Add, BitOr, BitXor, Sub},
+};
 
 use crate::from_bytes::FromBytes;
 use std::fmt::Debug;
@@ -6,13 +9,13 @@ use std::fmt::Debug;
 pub trait UInt:
     Add<Output = Self>
     + Sub<Output = Self>
-    + Shl<Output = Self>
-    + Shr<Output = Self>
     + BitXor<Output = Self>
     + BitOr<Output = Self>
     + PartialEq
     + Copy
     + Debug
+    + Binary
+    + Display
 {
     fn zero() -> Self;
     fn n(u: u32) -> Self;

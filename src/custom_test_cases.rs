@@ -32,6 +32,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use tracing_test::traced_test;
+
     use crate::error::Result;
     use crate::hex::{decode_hex, encode_hex};
 
@@ -47,6 +49,7 @@ mod tests {
         let ct = "212A";
         parse_key_ct_pt(key, pt, ct)
     }
+
     fn rc5_16_16_8() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let key = "0001020304050607";
         let pt = "00010203";
@@ -73,7 +76,15 @@ mod tests {
         parse_key_ct_pt(key, pt, ct)
     }
 
+    fn rc5_80_4_12() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "000102030405060708090A0B";
+        let pt = "000102030405060708090A0B0C0D0E0F10111213";
+        let ct = "9CB59ECBA4EA84568A4278B0E132D5FC9D5819D6";
+        parse_key_ct_pt(key, pt, ct)
+    }
+
     #[test]
+    #[traced_test]
     fn encode_rc5_8_12_4() {
         let (key, pt, ct) = rc5_8_12_4().unwrap();
         let res = encode::<u8>(12, 4, key, pt);
@@ -89,6 +100,7 @@ mod tests {
     }
 
     #[test]
+    #[traced_test]
     fn encode_rc5_16_16_8() {
         let (key, pt, ct) = rc5_16_16_8().unwrap();
         let res = encode::<u16>(16, 8, key, pt);
@@ -143,4 +155,11 @@ mod tests {
         let res = decode::<u128>(28, 32, key, ct);
         assert!(&pt[..] == &res[..]);
     }
+    // #[test]
+    // #[traced_test]
+    // fn encode_rc5_80_4_12() {
+    //     // let (key, pt, ct) = rc5_80_4_12().unwrap();
+    //     // let res = encode::<u80>(80, 12, key, pt);
+    //     //assert!(&ct[..] == &res[..]);
+    // }
 }

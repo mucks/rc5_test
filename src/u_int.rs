@@ -303,7 +303,7 @@ impl UInt for U80 {
     }
 
     fn into_u32(self) -> u32 {
-        self.to_u128() as u32
+        self.to_u32()
     }
 
     fn from_bytes(a: &mut &[u8]) -> Self {

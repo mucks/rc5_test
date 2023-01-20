@@ -39,8 +39,10 @@ where
     fn parse_bytes(&self, plaintext: Vec<u8>) -> (T, T) {
         let range = T::range();
         let mut slice_a: &[u8] = &plaintext[0..range];
+        println!("slice_a: {:?}", slice_a);
         let plaintext_a = T::from_bytes(&mut slice_a);
         let mut slice_b: &[u8] = &plaintext[range..range * 2];
+        println!("slice_b: {:?}", slice_b);
         let plaintext_b = T::from_bytes(&mut slice_b);
         (plaintext_a, plaintext_b)
     }
@@ -48,8 +50,14 @@ where
     pub fn encode(&self, plaintext: Vec<u8>, ciphertext: &mut Vec<u8>) {
         let (plaintext_a, plaintext_b) = self.parse_bytes(plaintext);
 
+        println!("PA: {}", plaintext_a);
+        println!("PB: {}", plaintext_b);
+
         let mut a = self.s[0].wadd(plaintext_a);
         let mut b = self.s[1].wadd(plaintext_b);
+
+        println!("A: {:x}", a);
+        println!("B: {:x}", b);
 
         for i in 1..(self.rounds + 1) as usize {
             a = (a ^ b).rotl(b.into_u32()).wadd(self.s[2 * i]);
@@ -169,9 +177,17 @@ where
             println!("S[{}] = {:x}", i, s[i]);
 
             let ab: T = a.wadd(b);
-            l[j] = l[j].wadd(ab).rotl(ab.into_u32());
+            // L + AB
+            let lj = l[j];
+            let lpab = lj.wadd(ab);
+            l[j] = lpab.rotl(ab.into_u32());
             b = l[j];
 
+            if format!("{:x}", l[j]) == "aacaff91b90252434b8d" {
+                println!("{} + {} = {}", lj, ab, lpab);
+            }
+
+            //This L is the wrong value!
             println!("L[{}] = {:x}", j, l[j]);
 
             i = (i + 1) % self.t();

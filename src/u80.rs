@@ -170,6 +170,10 @@ impl U80 {
         sum
     }
 
+    pub fn to_u32(&self) -> u32 {
+        self.to_u128() as u32
+    }
+
     fn to_bit_str(&self) -> String {
         let mut s = String::new();
         for i in 0..Self::BITS {
@@ -244,7 +248,7 @@ impl U80 {
 
     // From Hex String
     fn from_hex_str(s: &str) -> Result<Self, ParseIntError> {
-        let mut s = decode_hex(s)?;
+        let s = decode_hex(s)?;
         Ok(Self::from_bytes(&mut s.as_slice(), true))
     }
 
@@ -289,6 +293,29 @@ impl U80 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn u8_conversion() {
+        let v: u32 = 500;
+        let u: u8 = v as u8;
+
+        let t = v % 256;
+
+        assert_eq!(u, t as u8);
+    }
+
+    #[test]
+    fn u32_conversion() {
+        let v64: u64 = 902166487400020018;
+        //let v128: u128 = 902166487400020018;
+
+        let u = U80::from_bytes(&v64.to_le_bytes(), false);
+
+        println!("{} == {}", u.to_u32(), v64 as u32);
+
+        assert_eq!(u.to_u32(), v64 as u32);
+    }
+
     #[test]
     fn rotate_right() {
         let u = U80::from_u128(2);
@@ -308,6 +335,12 @@ mod tests {
         let u = U80::from_u128(2);
         let u = u.rotate_left(79);
         assert_eq!(u.to_u128(), 1);
+        let u = U80::from_u128(2);
+        let u = u.rotate_left(80);
+        assert_eq!(u.to_u128(), 2);
+        let u = U80::from_u128(2);
+        let u = u.rotate_left(81);
+        assert_eq!(u.to_u128(), 4);
     }
 
     #[test]
@@ -378,8 +411,10 @@ mod tests {
     fn wrapping_add() {
         let a = U80::from_u128(12);
         let b = U80::from_u128(1208925819614629174706172);
-
         assert_eq!((a + b).to_u128(), 8);
+        let a = U80::from_u128(2);
+        let b = U80::from_u128(1208925819614629174706175);
+        assert_eq!((a + b).to_u128(), 1);
     }
 
     #[test]

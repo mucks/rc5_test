@@ -162,4 +162,14 @@ mod tests {
 
         assert!(&res[..] == &ct[..]);
     }
+
+    #[test]
+    fn decode_rc5_80_4_12() {
+        let (key, pt, ct) = rc5_80_4_12().unwrap();
+        let res = decode::<U80>(4, 12, key, ct);
+
+        println!("{} == {}", encode_hex(&res), encode_hex(&pt));
+
+        assert!(&res[..] == &pt[..]);
+    }
 }

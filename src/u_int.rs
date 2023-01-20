@@ -1,9 +1,9 @@
 use std::{
-    fmt::{Binary, Display},
+    fmt::{Binary, Display, LowerHex},
     ops::{Add, BitOr, BitXor, Sub},
 };
 
-use crate::from_bytes::FromBytes;
+use crate::{from_bytes::FromBytes, u80::U80};
 use std::fmt::Debug;
 
 pub trait UInt:
@@ -16,6 +16,7 @@ pub trait UInt:
     + Debug
     + Binary
     + Display
+    + LowerHex
 {
     fn zero() -> Self;
     fn n(u: u32) -> Self;
@@ -259,7 +260,7 @@ impl UInt for u128 {
     }
 
     fn range() -> usize {
-        16
+        u128::BITS as usize / 8
     }
     fn pw() -> Self {
         0xB7E151628AED2A6ABF7158809CF4F3C7
@@ -268,6 +269,64 @@ impl UInt for u128 {
         0x9E3779B97F4A7C15F39CC0605CEDC835
     }
     fn w() -> usize {
-        128
+        u128::BITS as usize
+    }
+}
+
+impl UInt for U80 {
+    fn n(u: u32) -> Self {
+        U80::from_u128(u as u128)
+    }
+
+    fn zero() -> Self {
+        U80::from_u128(0)
+    }
+
+    fn from_u8(u: u8) -> Self {
+        U80::from_u128(u as u128)
+    }
+
+    fn wadd(self, rhs: Self) -> Self {
+        self.wrapping_add(rhs)
+    }
+
+    fn wsub(self, rhs: Self) -> Self {
+        self.wrapping_sub(rhs)
+    }
+
+    fn rotl(self, rhs: u32) -> Self {
+        self.rotate_left(rhs)
+    }
+
+    fn rotr(self, rhs: u32) -> Self {
+        self.rotate_right(rhs)
+    }
+
+    fn into_u32(self) -> u32 {
+        self.to_u128() as u32
+    }
+
+    fn from_bytes(a: &mut &[u8]) -> Self {
+        U80::from_bytes(a, true)
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        U80::to_bytes(&self, true)
+    }
+
+    fn range() -> usize {
+        U80::BITS / 8
+    }
+
+    fn w() -> usize {
+        U80::BITS
+    }
+
+    fn pw() -> Self {
+        U80::from_u128(0xB7E151628AED2A6ABF71)
+    }
+
+    fn qw() -> Self {
+        U80::from_u128(0x9E3779B97F4A7C15F39D)
     }
 }

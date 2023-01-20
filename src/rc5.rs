@@ -1,5 +1,3 @@
-use tracing::debug;
-
 /*
 RC5 implementation in Rust
 algorithm source:
@@ -56,6 +54,8 @@ where
         for i in 1..(self.rounds + 1) as usize {
             a = (a ^ b).rotl(b.into_u32()).wadd(self.s[2 * i]);
             b = (b ^ a).rotl(a.into_u32()).wadd(self.s[2 * i + 1]);
+            println!("A: {:x}", a);
+            println!("B: {:x}", b);
         }
 
         ciphertext.extend(a.to_bytes());
@@ -100,44 +100,56 @@ where
         (2 * (self.rounds + 1)) as usize
     }
 
+    fn print_L(l: &Vec<T>) {
+        for i in 0..l.len() {
+            println!("L[{}] = {:x}", i, l[i]);
+        }
+    }
+
+    fn print_S(s: &Vec<T>) {
+        for i in 0..s.len() {
+            println!("S[{}] = {:x}", i, s[i]);
+        }
+    }
+
     // L is initially a c-length list of 0-valued w-length words
     // A temporary working array used during key scheduling. initialized to the key in words.
     fn generate_L(&self, key: &Vec<u8>) -> Vec<T> {
-        debug!("<generate_L>");
         let mut l: Vec<T> = vec![T::zero(); self.c()];
         l[self.c() - 1] = T::zero();
 
+        // U80: L-values are reversed!
         for i in (0..self.b()).rev() {
             let iu = i / self.u();
 
             let r = l[iu].rotl(8);
-            debug!("{iu}: {:b} << 8 = {:b}", l[iu], r);
 
             let k = T::from_u8(key[i]);
-            let f = r + T::from_u8(key[i]);
-            debug!("{iu}: {:b} + {:b} = {:b}", r, k, f);
+            let f = r + k;
 
             l[iu] = f;
         }
-        debug!("</generate_L>");
+
+        Self::print_L(&l);
+
         l
     }
     //Initialize key-independent pseudorandom S array
     //S is initially a t=2(r+1) length list of undefined w-length words
     fn generate_S(&self) -> Vec<T> {
-        debug!("<generate_S>");
         let mut s: Vec<T> = vec![T::zero(); self.t()];
 
         s[0] = T::pw();
         for i in 1..self.t() {
             s[i] = s[i - 1].wadd(T::qw());
         }
-        debug!("</generate_S>");
+
+        Self::print_S(&s);
+
         s
     }
 
     pub fn setup(&mut self, key: Vec<u8>) {
-        debug!("<setup>");
         let mut l: Vec<T> = self.generate_L(&key);
         let mut s: Vec<T> = self.generate_S();
 
@@ -154,14 +166,17 @@ where
             s[i] = s[i].wadd(ab).rotl(3);
             a = s[i];
 
+            println!("S[{}] = {:x}", i, s[i]);
+
             let ab: T = a.wadd(b);
             l[j] = l[j].wadd(ab).rotl(ab.into_u32());
             b = l[j];
 
+            println!("L[{}] = {:x}", j, l[j]);
+
             i = (i + 1) % self.t();
             j = (j + 1) % self.c();
         }
-        debug!("</setup>");
         self.s = s;
     }
 }

@@ -32,10 +32,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use tracing_test::traced_test;
 
     use crate::error::Result;
     use crate::hex::{decode_hex, encode_hex};
+    use crate::u80::U80;
 
     use super::*;
 
@@ -84,7 +84,6 @@ mod tests {
     }
 
     #[test]
-    #[traced_test]
     fn encode_rc5_8_12_4() {
         let (key, pt, ct) = rc5_8_12_4().unwrap();
         let res = encode::<u8>(12, 4, key, pt);
@@ -100,7 +99,6 @@ mod tests {
     }
 
     #[test]
-    #[traced_test]
     fn encode_rc5_16_16_8() {
         let (key, pt, ct) = rc5_16_16_8().unwrap();
         let res = encode::<u16>(16, 8, key, pt);
@@ -155,11 +153,13 @@ mod tests {
         let res = decode::<u128>(28, 32, key, ct);
         assert!(&pt[..] == &res[..]);
     }
-    // #[test]
-    // #[traced_test]
-    // fn encode_rc5_80_4_12() {
-    //     // let (key, pt, ct) = rc5_80_4_12().unwrap();
-    //     // let res = encode::<u80>(80, 12, key, pt);
-    //     //assert!(&ct[..] == &res[..]);
-    // }
+    #[test]
+    fn encode_rc5_80_4_12() {
+        let (key, pt, ct) = rc5_80_4_12().unwrap();
+        let res = encode::<U80>(4, 12, key, pt);
+
+        println!("{} == {}", encode_hex(&res), encode_hex(&ct));
+
+        assert!(&res[..] == &ct[..]);
+    }
 }

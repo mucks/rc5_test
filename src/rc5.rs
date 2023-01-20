@@ -150,6 +150,10 @@ where
         s[0] = T::pw();
         for i in 1..self.t() {
             s[i] = s[i - 1].wadd(T::qw());
+            // u8 is 8 bits, so we need to add 1 to the last word
+            if T::w() == 8 {
+                s[i] = s[i].wadd(T::from_u8(1))
+            }
         }
 
         Self::print_S(&s);

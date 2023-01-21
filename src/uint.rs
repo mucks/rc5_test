@@ -95,6 +95,13 @@ impl<const N: usize> UInt for CustomUInt<N> {
     }
 
     fn pw() -> Self {
+        if N == 256 {
+            return Self::from_hex_str(
+                "B7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF",
+            )
+            .unwrap();
+        }
+
         let pw = match N {
             8 => 0xB7,
             16 => 0xB7E1,
@@ -109,6 +116,13 @@ impl<const N: usize> UInt for CustomUInt<N> {
     }
 
     fn qw() -> Self {
+        if N == 256 {
+            return Self::from_hex_str(
+                "9E3779B97F4A7C15F39CC0605CEDC8341082276BF3A27251F86C6A11D0C18E95",
+            )
+            .unwrap();
+        }
+
         let qw = match N {
             8 => 0x9E,
             16 => 0x9E37,

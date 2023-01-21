@@ -183,7 +183,9 @@ static int setup(void *rkey, int rk_words,
             rotl(A, A, 3, n);
             memcpy(rk + ko, A, n);
             add(B, B, A, n);
+            printf("A:%d B:%d n:%d\n", A, B, n);
             rot_amt = bits(B, n, lgw);
+            printf("rot_amt %d \n", rot_amt);
             add(B, B, L + lo, n);
             rotl(B, B, rot_amt, n);
             memcpy(L + lo, B, n);
@@ -201,10 +203,6 @@ static int setup(void *rkey, int rk_words,
 int rc5_setup(void *rkey, int w, int r, int b, void *key)
 {
     return setup(rkey, 2 * r + 2, w, r, b, key);
-}
-int rc6_setup(void *rkey, int w, int r, int b, void *key)
-{
-    return setup(rkey, 2 * r + 4, w, r, b, key);
 }
 
 void rc5_encrypt(void *rkey, int w, int r, void *pt, void *ct)
@@ -286,131 +284,6 @@ void rc5_decrypt(void *rkey, int w, int r, void *ct, void *pt)
     }
 }
 
-void rc6_encrypt(void *rkey, int w, int r, void *pt, void *ct)
-{
-    unsigned char A[MAXSZ], B[MAXSZ], C[MAXSZ], D[MAXSZ];
-    unsigned char t[MAXSZ], u[MAXSZ];
-    unsigned char *rk = (unsigned char *)rkey,
-                  *p = (unsigned char *)pt,
-                  *c = (unsigned char *)ct;
-    int rot_amt, i, n = w / 8, lgw = lg2(w);
-    /* Read A/B/C/D in byte-reverse order */
-    for (i = 0; i < n; i++)
-    {
-        A[i] = p[n - i - 1];
-        B[i] = p[2 * n - i - 1];
-        C[i] = p[3 * n - i - 1];
-        D[i] = p[4 * n - i - 1];
-    }
-    add(B, B, rk, n);
-    add(D, D, rk + n, n);
-    if (vectors)
-    {
-        pbuf(B, n, "B = ");
-        pbuf(D, n, "D = ");
-    }
-
-    for (i = 1; i <= r; i++)
-    {
-        rotl(t, B, 1, n);
-        t[n - 1] |= 1; /* t = 2*B+1          */
-        rotl(u, D, 1, n);
-        u[n - 1] |= 1; /* u = 2*D+1          */
-        mul(t, t, B, n);
-        rotl(t, t, lgw, n); /* t = rotl(B*t, lgw) */
-        mul(u, u, D, n);
-        rotl(u, u, lgw, n); /* u = rotl(D*u, lgw) */
-        rot_amt = bits(u, n, lgw);
-        eor(A, A, t, n);
-        rotl(A, A, rot_amt, n);
-        add(A, A, rk + 2 * i * n, n);
-        rot_amt = bits(t, n, lgw);
-        eor(C, C, u, n);
-        rotl(C, C, rot_amt, n);
-        add(C, C, rk + 2 * i * n + n, n);
-        if (vectors)
-        {
-            pbuf(A, n, "A = ");
-            pbuf(C, n, "C = ");
-        }
-        memcpy(t, A, n);
-        memcpy(A, B, n);
-        memcpy(B, C, n);
-        memcpy(C, D, n);
-        memcpy(D, t, n);
-    }
-    add(A, A, rk + (2 * r + 2) * n, n);
-    add(C, C, rk + (2 * r + 3) * n, n);
-    if (vectors)
-    {
-        pbuf(A, n, "A = ");
-        pbuf(C, n, "C = ");
-    }
-    /* Write A/B/C/D in byte-reverse order */
-    for (i = 0; i < n; i++)
-    {
-        c[n - i - 1] = A[i];
-        c[2 * n - i - 1] = B[i];
-        c[3 * n - i - 1] = C[i];
-        c[4 * n - i - 1] = D[i];
-    }
-}
-
-void rc6_decrypt(void *rkey, int w, int r, void *ct, void *pt)
-{
-    unsigned char A[MAXSZ], B[MAXSZ], C[MAXSZ], D[MAXSZ];
-    unsigned char t[MAXSZ], u[MAXSZ];
-    unsigned char *rk = (unsigned char *)rkey,
-                  *p = (unsigned char *)pt,
-                  *c = (unsigned char *)ct;
-    int rot_amt, i, n = w / 8, lgw = lg2(w);
-    /* Read A/B/C/D in byte-reverse order */
-    for (i = 0; i < n; i++)
-    {
-        A[i] = c[n - i - 1];
-        B[i] = c[2 * n - i - 1];
-        C[i] = c[3 * n - i - 1];
-        D[i] = c[4 * n - i - 1];
-    }
-    sub(A, A, rk + (2 * r + 2) * n, n);
-    sub(C, C, rk + (2 * r + 3) * n, n);
-    for (i = r; i >= 1; i--)
-    {
-        memcpy(t, D, n);
-        memcpy(D, C, n);
-        memcpy(C, B, n);
-        memcpy(B, A, n);
-        memcpy(A, t, n);
-        rotl(t, B, 1, n);
-        t[n - 1] |= 1; /* t = 2*B+1          */
-        rotl(u, D, 1, n);
-        u[n - 1] |= 1; /* u = 2*D+1          */
-        mul(t, t, B, n);
-        rotl(t, t, lgw, n); /* t = rotl(B*t, lgw) */
-        mul(u, u, D, n);
-        rotl(u, u, lgw, n); /* u = rotl(D*u, lgw) */
-        rot_amt = bits(t, n, lgw);
-        sub(C, C, rk + 2 * i * n + n, n);
-        rotl(C, C, w - rot_amt, n);
-        eor(C, C, u, n);
-        rot_amt = bits(u, n, lgw);
-        sub(A, A, rk + 2 * i * n, n);
-        rotl(A, A, w - rot_amt, n);
-        eor(A, A, t, n);
-    }
-    sub(B, B, rk, n);
-    sub(D, D, rk + n, n);
-
-    /* Write A/B/C/D in byte-reverse order */
-    for (i = 0; i < n; i++)
-    {
-        p[n - i - 1] = A[i];
-        p[2 * n - i - 1] = B[i];
-        p[3 * n - i - 1] = C[i];
-        p[4 * n - i - 1] = D[i];
-    }
-}
-
 static void print_vector(int w, int r, int b)
 {
     if (w % 8 != 0 || w < 8 || w / 8 > MAXSZ || r < 0 || r > 255 || b < 0 || b > 255)
@@ -441,10 +314,8 @@ static void print_vector(int w, int r, int b)
 
 int main()
 {
-    vectors = 1;
     print_vector(8, 12, 4);
     printf("\n");
-    vectors = 0;
     print_vector(16, 16, 8);
     printf("\n");
     print_vector(32, 20, 16);
@@ -456,5 +327,8 @@ int main()
     print_vector(24, 4, 0);
     printf("\n");
     print_vector(80, 4, 12);
+    vectors = 1;
+    printf("\n");
+    print_vector(256, 28, 32);
     return 0;
 }

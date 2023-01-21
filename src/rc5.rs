@@ -39,10 +39,8 @@ where
     fn parse_bytes(&self, plaintext: Vec<u8>) -> (T, T) {
         let range = T::range();
         let mut slice_a: &[u8] = &plaintext[0..range];
-        println!("slice_a: {:?}", slice_a);
         let plaintext_a = T::from_bytes(&mut slice_a);
         let mut slice_b: &[u8] = &plaintext[range..range * 2];
-        println!("slice_b: {:?}", slice_b);
         let plaintext_b = T::from_bytes(&mut slice_b);
         (plaintext_a, plaintext_b)
     }
@@ -50,19 +48,21 @@ where
     pub fn encode(&self, plaintext: Vec<u8>, ciphertext: &mut Vec<u8>) {
         let (plaintext_a, plaintext_b) = self.parse_bytes(plaintext);
 
-        println!("PA: {}", plaintext_a);
-        println!("PB: {}", plaintext_b);
-
         let mut a = self.s[0].wadd(plaintext_a);
         let mut b = self.s[1].wadd(plaintext_b);
 
+        #[cfg(test)]
         println!("A: {:x}", a);
+        #[cfg(test)]
         println!("B: {:x}", b);
 
         for i in 1..(self.rounds + 1) as usize {
             a = (a ^ b).rotl(b.into_u32()).wadd(self.s[2 * i]);
             b = (b ^ a).rotl(a.into_u32()).wadd(self.s[2 * i + 1]);
+
+            #[cfg(test)]
             println!("A: {:x}", a);
+            #[cfg(test)]
             println!("B: {:x}", b);
         }
 
@@ -75,9 +75,19 @@ where
         let mut a = ciphertext_a;
         let mut b = ciphertext_b;
 
+        #[cfg(test)]
+        println!("A: {:x}", a);
+        #[cfg(test)]
+        println!("B: {:x}", b);
+
         for i in (1..(self.rounds + 1) as usize).rev() {
             b = ((b.wsub(self.s[2 * i + 1])).rotr(a.into_u32())) ^ a;
             a = ((a.wsub(self.s[2 * i])).rotr(b.into_u32())) ^ b;
+
+            #[cfg(test)]
+            println!("A: {:x}", a);
+            #[cfg(test)]
+            println!("B: {:x}", b);
         }
 
         a = a.wsub(self.s[0]);
@@ -138,6 +148,7 @@ where
             l[iu] = f;
         }
 
+        #[cfg(test)]
         Self::print_L(&l);
 
         l
@@ -156,6 +167,7 @@ where
             }
         }
 
+        #[cfg(test)]
         Self::print_S(&s);
 
         s
@@ -178,20 +190,13 @@ where
             s[i] = s[i].wadd(ab).rotl(3);
             a = s[i];
 
-            println!("S[{}] = {:x}", i, s[i]);
-
             let ab: T = a.wadd(b);
-            // L + AB
-            let lj = l[j];
-            let lpab = lj.wadd(ab);
-            l[j] = lpab.rotl(ab.into_u32());
+            l[j] = l[j].wadd(ab).rotl(ab.into_u32());
             b = l[j];
 
-            if format!("{:x}", l[j]) == "aacaff91b90252434b8d" {
-                println!("{} + {} = {}", lj, ab, lpab);
-            }
-
-            //This L is the wrong value!
+            #[cfg(test)]
+            println!("S[{}] = {:x}", i, s[i]);
+            #[cfg(test)]
             println!("L[{}] = {:x}", j, l[j]);
 
             i = (i + 1) % self.t();

@@ -1,4 +1,5 @@
 mod custom_test_cases;
+mod custom_uint;
 mod error;
 mod from_bytes;
 mod hex;

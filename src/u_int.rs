@@ -3,7 +3,7 @@ use std::{
     ops::{Add, BitOr, BitXor, Sub},
 };
 
-use crate::{from_bytes::FromBytes, u80::U80};
+use crate::{custom_uint::CustomUint, from_bytes::FromBytes};
 use std::fmt::Debug;
 
 pub trait UInt:
@@ -90,6 +90,127 @@ impl UInt for u8 {
         8
     }
 }
+
+impl<const N: usize> UInt for CustomUint<N> {
+    fn zero() -> Self {
+        Self::from_u128(0)
+    }
+
+    fn n(u: u32) -> Self {
+        Self::from_u128(u as u128)
+    }
+
+    fn from_u8(u: u8) -> Self {
+        Self::from_u128(u as u128)
+    }
+
+    fn wadd(self, rhs: Self) -> Self {
+        self.wrapping_add(rhs)
+    }
+
+    fn wsub(self, rhs: Self) -> Self {
+        self.wrapping_sub(rhs)
+    }
+
+    fn rotl(self, rhs: u32) -> Self {
+        self.rotate_left(rhs)
+    }
+
+    fn rotr(self, rhs: u32) -> Self {
+        self.rotate_right(rhs)
+    }
+
+    fn into_u32(self) -> u32 {
+        self.to_u32()
+    }
+
+    fn from_bytes(a: &mut &[u8]) -> Self {
+        Self::from_bytes(&a, false)
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_bytes(false)
+    }
+
+    fn range() -> usize {
+        N / 8
+    }
+
+    fn w() -> usize {
+        N
+    }
+
+    fn pw() -> Self {
+        let pw = match N {
+            8 => 0xB7,
+            16 => 0xB7E1,
+            32 => 0xB7E15163,
+            64 => 0xB7E151628AED2A6B,
+            80 => 0xB7E151628AED2A6ABF71,
+            128 => 0xB7E151628AED2A6ABF7158809CF4F3C7,
+            _ => todo!(),
+        };
+        Self::from_u128(pw)
+    }
+
+    fn qw() -> Self {
+        let qw = match N {
+            8 => 0x9E,
+            16 => 0x9E37,
+            32 => 0x9E3779B9,
+            64 => 0x9E3779B97F4A7C15,
+            80 => 0x9E3779B97F4A7C15F39D,
+            128 => 0x9E3779B97F4A7C15F39CC0605CEDC835,
+            _ => todo!(),
+        };
+        Self::from_u128(qw)
+    }
+}
+
+// impl UInt for U16 {
+//     fn zero() -> Self {
+//         U16::from_u128(0)
+//     }
+//     fn n(u: u32) -> Self {
+//         U16::from_u128(u as u128)
+//     }
+//     fn from_u8(u: u8) -> Self {
+//         U16::from_u128(u as u128)
+//     }
+//     fn wadd(self, rhs: Self) -> Self {
+//         self.wrapping_add(rhs)
+//     }
+//     fn wsub(self, rhs: Self) -> Self {
+//         self.wrapping_sub(rhs)
+//     }
+//     fn rotl(self, rhs: u32) -> Self {
+//         self.rotate_left(rhs)
+//     }
+//     fn rotr(self, rhs: u32) -> Self {
+//         self.rotate_right(rhs)
+//     }
+//     fn into_u32(self) -> u32 {
+//         self.to_u32()
+//     }
+//     fn from_bytes(a: &mut &[u8]) -> Self {
+//         U16::from_bytes(&a, false)
+//     }
+//     fn to_bytes(&self) -> Vec<u8> {
+//         U16::to_bytes(&self, false).to_vec()
+//     }
+//     fn range() -> usize {
+//         2
+//     }
+//     fn pw() -> Self {
+//         U16::from_u128(0xB7E1)
+//     }
+//     fn qw() -> Self {
+//         U16::from_u128(0x9E37)
+//     }
+//     fn w() -> usize {
+//         16
+//     }
+// }
 
 impl UInt for u16 {
     fn zero() -> Self {
@@ -273,60 +394,60 @@ impl UInt for u128 {
     }
 }
 
-impl UInt for U80 {
-    fn n(u: u32) -> Self {
-        U80::from_u128(u as u128)
-    }
+// impl UInt for U80 {
+//     fn n(u: u32) -> Self {
+//         U80::from_u128(u as u128)
+//     }
 
-    fn zero() -> Self {
-        U80::from_u128(0)
-    }
+//     fn zero() -> Self {
+//         U80::from_u128(0)
+//     }
 
-    fn from_u8(u: u8) -> Self {
-        U80::from_u128(u as u128)
-    }
+//     fn from_u8(u: u8) -> Self {
+//         U80::from_u128(u as u128)
+//     }
 
-    fn wadd(self, rhs: Self) -> Self {
-        self.wrapping_add(rhs)
-    }
+//     fn wadd(self, rhs: Self) -> Self {
+//         self.wrapping_add(rhs)
+//     }
 
-    fn wsub(self, rhs: Self) -> Self {
-        self.wrapping_sub(rhs)
-    }
+//     fn wsub(self, rhs: Self) -> Self {
+//         self.wrapping_sub(rhs)
+//     }
 
-    fn rotl(self, rhs: u32) -> Self {
-        self.rotate_left(rhs)
-    }
+//     fn rotl(self, rhs: u32) -> Self {
+//         self.rotate_left(rhs)
+//     }
 
-    fn rotr(self, rhs: u32) -> Self {
-        self.rotate_right(rhs)
-    }
+//     fn rotr(self, rhs: u32) -> Self {
+//         self.rotate_right(rhs)
+//     }
 
-    fn into_u32(self) -> u32 {
-        self.to_u32()
-    }
+//     fn into_u32(self) -> u32 {
+//         self.to_u32()
+//     }
 
-    fn from_bytes(a: &mut &[u8]) -> Self {
-        U80::from_bytes(a, true)
-    }
+//     fn from_bytes(a: &mut &[u8]) -> Self {
+//         U80::from_bytes(a, true)
+//     }
 
-    fn to_bytes(&self) -> Vec<u8> {
-        U80::to_bytes(&self, true)
-    }
+//     fn to_bytes(&self) -> Vec<u8> {
+//         U80::to_bytes(&self, true)
+//     }
 
-    fn range() -> usize {
-        U80::BITS / 8
-    }
+//     fn range() -> usize {
+//         10
+//     }
 
-    fn w() -> usize {
-        U80::BITS
-    }
+//     fn w() -> usize {
+//         80
+//     }
 
-    fn pw() -> Self {
-        U80::from_u128(0xB7E151628AED2A6ABF71)
-    }
+//     fn pw() -> Self {
+//         U80::from_u128(0xB7E151628AED2A6ABF71)
+//     }
 
-    fn qw() -> Self {
-        U80::from_u128(0x9E3779B97F4A7C15F39D)
-    }
-}
+//     fn qw() -> Self {
+//         U80::from_u128(0x9E3779B97F4A7C15F39D)
+//     }
+// }

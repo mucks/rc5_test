@@ -33,10 +33,9 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::custom_uint::{U128, U16, U32, U64, U8};
+    use crate::custom_uint::{U128, U16, U32, U64, U8, U80};
     use crate::error::Result;
     use crate::hex::{decode_hex, encode_hex};
-    use crate::u80::U80;
 
     use super::*;
 
@@ -84,11 +83,20 @@ mod tests {
         parse_key_ct_pt(key, pt, ct)
     }
 
+    // Tests with standard uints both with internal rust uint and my own custom uint
+
     #[test]
     fn encode_rc5_8_12_4() {
         let (key, pt, ct) = rc5_8_12_4().unwrap();
-        let res = encode::<U8>(12, 4, key, pt);
+        let res = encode::<u8>(12, 4, key, pt);
         println!("{} == {:?}", encode_hex(&res), encode_hex(&ct));
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
+    fn encode_rc5_custom_8_12_4() {
+        let (key, pt, ct) = rc5_8_12_4().unwrap();
+        let res = encode::<U8>(12, 4, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
@@ -99,7 +107,7 @@ mod tests {
         assert!(&pt[..] == &res[..]);
     }
     #[test]
-    fn decode_custom_rc5_8_12_4() {
+    fn decode_rc5_custom_8_12_4() {
         let (key, pt, ct) = rc5_8_12_4().unwrap();
         let res = decode::<U8>(12, 4, key, ct);
         assert!(&pt[..] == &res[..]);
@@ -107,6 +115,13 @@ mod tests {
 
     #[test]
     fn encode_rc5_16_16_8() {
+        let (key, pt, ct) = rc5_16_16_8().unwrap();
+        let res = encode::<u16>(16, 8, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
+    fn encode_rc5_custom_16_16_8() {
         let (key, pt, ct) = rc5_16_16_8().unwrap();
         let res = encode::<U16>(16, 8, key, pt);
         assert!(&ct[..] == &res[..]);
@@ -120,53 +135,97 @@ mod tests {
     }
 
     #[test]
-    fn decode_custom_rc5_16_16_8() {
+    fn decode_rc5_custom_16_16_8() {
         let (key, pt, ct) = rc5_16_16_8().unwrap();
         let res = decode::<U16>(16, 8, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
-    fn encode_rc_32_20_16() {
+    fn encode_rc5_32_20_16() {
+        let (key, pt, ct) = rc5_32_20_16().unwrap();
+        let res = encode::<u32>(20, 16, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+    #[test]
+    fn encode_rc5_custom_32_20_16() {
         let (key, pt, ct) = rc5_32_20_16().unwrap();
         let res = encode::<U32>(20, 16, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
-    fn decode_rc_32_20_16() {
+    fn decode_rc5_32_20_16() {
         let (key, pt, ct) = rc5_32_20_16().unwrap();
         let res = decode::<u32>(20, 16, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
-    fn encode_rc_64_24_24() {
+    fn decode_rc5_custom_32_20_16() {
+        let (key, pt, ct) = rc5_32_20_16().unwrap();
+        let res = decode::<U32>(20, 16, key, ct);
+        assert!(&pt[..] == &res[..]);
+    }
+
+    #[test]
+    fn encode_rc5_64_24_24() {
+        let (key, pt, ct) = rc5_64_24_24().unwrap();
+        let res = encode::<u64>(24, 24, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
+    fn encode_rc5_custom_64_24_24() {
         let (key, pt, ct) = rc5_64_24_24().unwrap();
         let res = encode::<U64>(24, 24, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
-    fn decode_rc_64_24_24() {
+    fn decode_rc5_64_24_24() {
         let (key, pt, ct) = rc5_64_24_24().unwrap();
         let res = decode::<u64>(24, 24, key, ct);
         assert!(&pt[..] == &res[..]);
     }
 
     #[test]
-    fn encode_rc_128_28_32() {
+    fn decode_rc5_custom_64_24_24() {
+        let (key, pt, ct) = rc5_64_24_24().unwrap();
+        let res = decode::<U64>(24, 24, key, ct);
+        assert!(&pt[..] == &res[..]);
+    }
+
+    #[test]
+    fn encode_rc5_128_28_32() {
+        let (key, pt, ct) = rc5_128_28_32().unwrap();
+        let res = encode::<u128>(28, 32, key, pt);
+        assert!(&ct[..] == &res[..]);
+    }
+
+    #[test]
+    fn encode_rc5_custom_128_28_32() {
         let (key, pt, ct) = rc5_128_28_32().unwrap();
         let res = encode::<U128>(28, 32, key, pt);
         assert!(&ct[..] == &res[..]);
     }
 
     #[test]
-    fn decode_rc_128_28_32() {
+    fn decode_rc5_128_28_32() {
         let (key, pt, ct) = rc5_128_28_32().unwrap();
         let res = decode::<u128>(28, 32, key, ct);
         assert!(&pt[..] == &res[..]);
     }
+
+    #[test]
+    fn decode_rc5_custom_128_28_32() {
+        let (key, pt, ct) = rc5_128_28_32().unwrap();
+        let res = decode::<U128>(28, 32, key, ct);
+        assert!(&pt[..] == &res[..]);
+    }
+
+    // Irregular UINTS
+
     #[test]
     fn encode_rc5_80_4_12() {
         let (key, pt, ct) = rc5_80_4_12().unwrap();

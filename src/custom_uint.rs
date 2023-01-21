@@ -11,6 +11,8 @@ pub type U32 = CustomUint<32>;
 pub type U64 = CustomUint<64>;
 pub type U128 = CustomUint<128>;
 
+pub type U80 = CustomUint<80>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CustomUint<const N: usize> {
     bits: [bool; N],
@@ -140,7 +142,7 @@ impl<const N: usize> CustomUint<N> {
         let mut bits = [false; N];
 
         for i in 0..N {
-            let bit_index = ((i + N) - rhs as usize) % N;
+            let bit_index = ((i + N).wrapping_sub(rhs as usize)) % N;
             bits[i] = self.bits[bit_index];
         }
 
@@ -207,7 +209,6 @@ impl<const N: usize> std::ops::BitOr for CustomUint<N> {
     }
 }
 
-//TODO: fix subtraction
 impl<const N: usize> std::ops::Add for CustomUint<N> {
     type Output = Self;
 
@@ -249,87 +250,171 @@ impl<const N: usize> std::ops::Add for CustomUint<N> {
     }
 }
 
+//TODO: fix subtraction
 impl<const N: usize> std::ops::Sub for CustomUint<N> {
     type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        let mut bits = [false; N];
-        let mut borrow_mode = false;
-        let mut next_one_index = 0;
+    fn sub(self, mut rhs: Self) -> Self::Output {
+        let s = format!("{} - {}", self, rhs);
         for i in (0..N).rev() {
-            let mut a = self.bits[i];
-            let b = rhs.bits[i];
-
-            if i == next_one_index {
-                borrow_mode = false;
-                a = !a;
-            }
-
-            if borrow_mode {
-                // 1 - 1
-                if a && b {
-                    bits[i] = true;
-                // 0 - 0
-                } else if !a && !b {
-                    bits[i] = true;
-                // 0 - 1
-                } else if !a && b {
-                    bits[i] = false;
-                // 1 - 0
-                } else {
-                    bits[i] = false;
-                }
-
-                continue;
-            }
-
-            // 1 - 1
-            if a && b {
-                bits[i] = false;
-            // 0 - 0
-            } else if !a && !b {
-                bits[i] = false
-            // 0 - 1
-            } else if !a && b {
-                bits[i] = true;
-
-                for j in (0..i).rev() {
-                    if self.bits[j] {
-                        borrow_mode = true;
-                        next_one_index = j;
-                        break;
-                    }
-                }
-            // 1 - 0
-            } else {
-                bits[i] = true;
-            }
+            rhs.bits[i] = !rhs.bits[i];
         }
 
-        let s = Self { bits };
+        let sum = self + rhs + Self::from_u128(1);
+
         #[cfg(test)]
-        println!("{} - {} = {}", self, rhs, s);
-        s
+        println!("{} = {}", s, sum);
+
+        sum
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn u8_math() {
-        // rotate right
-        let s = 238_u8.rotate_right(186);
-        assert_eq!(s, 187);
-        let s = 181_u8.rotate_right(33);
-        assert_eq!(s, 218);
-        let s = 236_u8.rotate_right(251);
-        assert_eq!(s, 157);
+    fn u8_conversion() {
+        let v: u32 = 500;
+        let u: u8 = v as u8;
 
-        // xor
-        assert_eq!(218_u8 ^ 33, 251);
-        assert_eq!(157_u8 ^ 251, 102);
-        assert_eq!(190_u8 ^ 102, 216);
+        let t = v % 256;
 
-        // subtraction
-        assert_eq!(42_u8.wrapping_sub(181), 181);
+        assert_eq!(u, t as u8);
+    }
+
+    #[test]
+    fn u32_conversion() {
+        let v64: u64 = 902166487400020018;
+        //let v128: u128 = 902166487400020018;
+
+        let u = U80::from_bytes(&v64.to_le_bytes(), false);
+
+        println!("{} == {}", u.to_u32(), v64 as u32);
+
+        assert_eq!(u.to_u32(), v64 as u32);
+    }
+
+    #[test]
+    fn rotate_right() {
+        let u = U80::from_u128(2);
+        let u = u.rotate_right(1);
+        assert_eq!(u.to_u128(), 1);
+    }
+
+    #[test]
+    fn rotate_left() {
+        let u = U80::from_u128(2);
+        let u = u.rotate_left(1);
+        assert_eq!(u.to_u128(), 4);
+    }
+
+    #[test]
+    fn rotate_left_wrap() {
+        let u = U80::from_u128(2);
+        let u = u.rotate_left(79);
+        assert_eq!(u.to_u128(), 1);
+        let u = U80::from_u128(2);
+        let u = u.rotate_left(80);
+        assert_eq!(u.to_u128(), 2);
+        let u = U80::from_u128(2);
+        let u = u.rotate_left(81);
+        assert_eq!(u.to_u128(), 4);
+    }
+
+    #[test]
+    fn from_bytes() {
+        let a = 11_u8.to_le_bytes();
+        let b = 1_u8.to_le_bytes();
+
+        let c = 1111_u32.to_le_bytes();
+
+        let u = U80::from_bytes(&mut a.as_slice(), false);
+        assert_eq!(u.to_u128(), 11);
+        let u = U80::from_bytes(&mut b.as_slice(), false);
+        assert_eq!(u.to_u128(), 1);
+        println!("\nc\n");
+        let u = U80::from_bytes(&mut c.as_slice(), false);
+        assert_eq!(u.to_u128(), 1111);
+    }
+
+    #[test]
+    fn to_bytes() {
+        let a: Vec<u8> = vec![250, 209, 184, 0, 0, 0, 0, 0, 0, 0];
+
+        let u = U80::from_u128(12112378).to_bytes(false);
+        assert_eq!(u, a);
+    }
+
+    #[test]
+    fn from_hex() {
+        let s = "40000000000000000000";
+        let u = U80::from_hex_str(s).unwrap();
+        assert_eq!(u.to_u128(), 0x40000000000000000000);
+
+        let s2 = "40000080000000000000";
+        let u = U80::from_hex_str(s2).unwrap();
+        assert_eq!(u.to_u128(), 0x40000080000000000000);
+
+        let s3 = "1E854F94";
+        let u = U80::from_hex_str(s3).unwrap();
+        assert_eq!(u.to_u128(), 0x1E854F94);
+    }
+
+    #[test]
+    fn to_hex() {
+        let key = "02030405060708090a0b";
+        let a: u128 = 9500362842338723695115;
+        let u = U80::from_u128(a);
+
+        assert_eq!(u.to_hex_str(), key);
+    }
+
+    #[test]
+    fn add() {
+        let a = U80::from_u128(3);
+        let b = U80::from_u128(3);
+
+        assert_eq!(a + b, U80::from_u128(6));
+    }
+
+    #[test]
+    fn sub() {
+        let a = U80::from_u128(3);
+        let b = U80::from_u128(2);
+
+        assert_eq!(a - b, U80::from_u128(1));
+    }
+
+    #[test]
+    fn wrapping_add() {
+        let a = U80::from_u128(12);
+        let b = U80::from_u128(1208925819614629174706172);
+        assert_eq!((a + b).to_u128(), 8);
+        let a = U80::from_u128(2);
+        let b = U80::from_u128(1208925819614629174706175);
+        assert_eq!((a + b).to_u128(), 1);
+    }
+
+    #[test]
+    fn wrapping_sub() {
+        let a = U80::from_u128(1);
+        let b = U80::from_u128(2);
+
+        assert_eq!((a - b).to_u128(), 1208925819614629174706175);
+    }
+
+    #[test]
+    fn or() {
+        let a = U80::from_u128(3);
+        let b = U80::from_u128(4);
+
+        assert_eq!((a | b).to_u128(), 7);
+    }
+    #[test]
+    fn xor() {
+        let a = U80::from_u128(3);
+        let b = U80::from_u128(5);
+
+        assert_eq!(a ^ b, U80::from_u128(6));
     }
 }

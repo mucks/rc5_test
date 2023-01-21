@@ -5,7 +5,6 @@ mod from_bytes;
 mod hex;
 mod key_size;
 mod rc5;
-mod u80;
 mod u_int;
 
 use rc5::Rc5;

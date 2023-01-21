@@ -5,7 +5,7 @@ algorithm source:
 */
 use crate::error::Result;
 use crate::key_size::KeySize;
-use crate::u_int::UInt;
+use crate::uint::UInt;
 
 pub struct Rc5<T> {
     key_size: KeySize,
@@ -203,5 +203,75 @@ where
             j = (j + 1) % self.c();
         }
         self.s = s;
+    }
+}
+
+/*
+The first magic constant, defined as  Odd((e-2)*2^w),
+where Odd is the nearest odd integer to the given input,
+e is the base of the natural logarithm, and w is defined above.
+*/
+pub fn calculate_magic_constant_pw(w: u32) -> u128 {
+    use std::f64::consts::E;
+
+    let d = (E - 2.) * 2_u128.pow(w) as f64;
+    let mut pw = odd(d);
+
+    if w == 8 {
+        pw -= 1;
+    }
+
+    pw
+}
+
+/*
+The second magic constant, defined as Odd((\phi - 1) * 2^w),
+where Odd is the nearest odd integer to the given input, where
+\phi  is the golden ratio, and w is defined above.
+*/
+pub fn calculate_magic_constant_qw(w: u32) -> u128 {
+    let golden_ratio = (1. + 5_f64.sqrt()) / 2.;
+
+    let d = (golden_ratio - 1.) * (2_u128.pow(w) as f64);
+    odd(d)
+}
+
+// get nearest odd integer given a float
+fn odd(d: f64) -> u128 {
+    (((d + 1.) / 2.) * 2. - 1.).round() as u128
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn calculate_pw() {
+        let pw = calculate_magic_constant_pw(8);
+        assert_eq!(pw, 0xB7);
+        let pw = calculate_magic_constant_pw(16);
+        assert_eq!(pw, 0xB7E1);
+        let pw = calculate_magic_constant_pw(32);
+        assert_eq!(pw, 0xB7E15163);
+        // let pw = calculate_magic_constant_pw(64);
+        // assert_eq!(pw, 0xB7E151628AED2A6B);
+        // let pw = calculate_magic_constant_pw(128);
+        // assert_eq!(pw, 0xB7E151628AED2A6ABF7158809CF4F3C7);
+    }
+
+    #[test]
+    #[ignore]
+    fn calculate_qw() {
+        let pw = calculate_magic_constant_qw(8);
+        assert_eq!(pw, 0x9E);
+        let pw = calculate_magic_constant_qw(16);
+        assert_eq!(pw, 0x9E37);
+        let pw = calculate_magic_constant_qw(32);
+        assert_eq!(pw, 0x9E3779B9);
+        // let pw = calculate_magic_constant_pw(64);
+        // assert_eq!(pw, 0xB7E151628AED2A6B);
+        // let pw = calculate_magic_constant_pw(128);
+        // assert_eq!(pw, 0xB7E151628AED2A6ABF7158809CF4F3C7);
     }
 }

@@ -183,9 +183,7 @@ static int setup(void *rkey, int rk_words,
             rotl(A, A, 3, n);
             memcpy(rk + ko, A, n);
             add(B, B, A, n);
-            printf("A:%d B:%d n:%d\n", A, B, n);
             rot_amt = bits(B, n, lgw);
-            printf("rot_amt %d \n", rot_amt);
             add(B, B, L + lo, n);
             rotl(B, B, rot_amt, n);
             memcpy(L + lo, B, n);
@@ -324,11 +322,11 @@ int main()
     printf("\n");
     print_vector(128, 28, 32);
     printf("\n");
-    print_vector(24, 4, 0);
-    printf("\n");
     print_vector(80, 4, 12);
-    vectors = 1;
     printf("\n");
     print_vector(256, 28, 32);
+    vectors = 1;
+    print_vector(24, 4, 0);
+    printf("\n");
     return 0;
 }

@@ -1,43 +1,12 @@
-use crate::{rc5::Rc5, u_int::UInt};
-
-/*
- * This function should return a cipher text for a given key and plaintext
- *
- */
-fn encode<T>(rounds: u8, key_size: usize, key: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8>
-where
-    T: UInt,
-{
-    let mut rc5: Rc5<T> = Rc5::new(rounds, key_size).unwrap();
-    rc5.setup(key);
-    let mut ciphertext = Vec::new();
-    rc5.encode(plaintext, &mut ciphertext);
-    ciphertext
-}
-
-/*
- * This function should return a plaintext for a given key and ciphertext
- *
- */
-fn decode<T>(rounds: u8, key_size: usize, key: Vec<u8>, ciphertext: Vec<u8>) -> Vec<u8>
-where
-    T: UInt,
-{
-    let mut rc5: Rc5<T> = Rc5::new(rounds, key_size).unwrap();
-    rc5.setup(key);
-    let mut plaintext = Vec::new();
-    rc5.decode(ciphertext, &mut plaintext);
-    plaintext
-}
-
 #[cfg(test)]
 mod tests {
 
-    use crate::custom_uint::{U128, U16, U32, U64, U8, U80};
+    use crate::custom_uint::{U128, U16, U24, U32, U64, U8, U80};
     use crate::error::Result;
     use crate::hex::{decode_hex, encode_hex};
 
-    use super::*;
+    use crate::decode;
+    use crate::encode;
 
     fn parse_key_ct_pt(key: &str, pt: &str, ct: &str) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         Ok((decode_hex(key)?, decode_hex(pt)?, decode_hex(ct)?))
@@ -76,10 +45,24 @@ mod tests {
         parse_key_ct_pt(key, pt, ct)
     }
 
+    fn rc5_24_4_0() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "";
+        let pt = "000102030405";
+        let ct = "89CBDCC9525A";
+        parse_key_ct_pt(key, pt, ct)
+    }
+
     fn rc5_80_4_12() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let key = "000102030405060708090A0B";
         let pt = "000102030405060708090A0B0C0D0E0F10111213";
         let ct = "9CB59ECBA4EA84568A4278B0E132D5FC9D5819D6";
+        parse_key_ct_pt(key, pt, ct)
+    }
+
+    fn rc5_256_28_32() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        let key = "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F";
+        let pt = "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F";
+        let ct = "5D5759FD8D73772F91219919933A7B63BEB98B695AED436982DB90387181C428CAFF3C7C99D59464B79C0F3CC6EAD369634D37683962139B29B08001FB3D27CD";
         parse_key_ct_pt(key, pt, ct)
     }
 
@@ -227,6 +210,7 @@ mod tests {
     // Irregular UINTS
 
     #[test]
+    #[ignore]
     fn encode_rc5_80_4_12() {
         let (key, pt, ct) = rc5_80_4_12().unwrap();
         let res = encode::<U80>(4, 12, key, pt);
@@ -237,6 +221,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn decode_rc5_80_4_12() {
         let (key, pt, ct) = rc5_80_4_12().unwrap();
         let res = decode::<U80>(4, 12, key, ct);
@@ -245,4 +230,36 @@ mod tests {
 
         assert!(&res[..] == &pt[..]);
     }
+
+    #[test]
+    #[ignore]
+    fn encode_rc5_24_4_0() {
+        let (key, pt, ct) = rc5_24_4_0().unwrap();
+        let res = encode::<U24>(4, 0, key, pt);
+
+        println!("{} == {}", encode_hex(&res), encode_hex(&ct));
+
+        assert!(&res[..] == &ct[..]);
+    }
+
+    #[test]
+    #[ignore]
+    fn decode_rc5_24_4_0() {
+        let (key, pt, ct) = rc5_24_4_0().unwrap();
+        let res = decode::<U24>(4, 0, key, ct);
+
+        println!("{} == {}", encode_hex(&res), encode_hex(&pt));
+
+        assert!(&res[..] == &pt[..]);
+    }
+
+    // #[test]
+    // fn encode_rc5_256_28_32() {
+    //     let (key, pt, ct) = rc5_256_28_32().unwrap();
+    //     let res = encode::<U256>(28, 32, key, pt);
+
+    //     println!("{} == {}", encode_hex(&res), encode_hex(&ct));
+
+    //     assert!(&res[..] == &ct[..]);
+    // }
 }

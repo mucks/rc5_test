@@ -3,7 +3,7 @@ use std::{
     ops::{Add, BitOr, BitXor, Sub},
 };
 
-use crate::{custom_uint::CustomUint, from_bytes::FromBytes};
+use crate::{custom_uint::CustomUInt, from_bytes::FromBytes};
 use std::fmt::Debug;
 
 pub trait UInt:
@@ -45,7 +45,7 @@ pub trait UInt:
     fn qw() -> Self;
 }
 
-impl<const N: usize> UInt for CustomUint<N> {
+impl<const N: usize> UInt for CustomUInt<N> {
     fn zero() -> Self {
         Self::from_u128(0)
     }
@@ -100,8 +100,9 @@ impl<const N: usize> UInt for CustomUint<N> {
             16 => 0xB7E1,
             32 => 0xB7E15163,
             64 => 0xB7E151628AED2A6B,
-            80 => 0xB7E151628AED2A6ABF71,
             128 => 0xB7E151628AED2A6ABF7158809CF4F3C7,
+            24 => 0xB7E151,
+            80 => 0xB7E151628AED2A6ABF71,
             _ => todo!(),
         };
         Self::from_u128(pw)
@@ -113,13 +114,18 @@ impl<const N: usize> UInt for CustomUint<N> {
             16 => 0x9E37,
             32 => 0x9E3779B9,
             64 => 0x9E3779B97F4A7C15,
-            80 => 0x9E3779B97F4A7C15F39D,
             128 => 0x9E3779B97F4A7C15F39CC0605CEDC835,
+            24 => 0x9E3779,
+            80 => 0x9E3779B97F4A7C15F39D,
+            //256 => 0x9E3779B97F4A7C15F39CC0605CEDC8341082276BF3A27251F86C6A11D0C18E95,
             _ => todo!(),
         };
         Self::from_u128(qw)
     }
 }
+
+// The code below is only to support rust internal types for convenience
+// not strictly necessary for the code to work because CustomUInt supports U8,U16,U32,U64,U128
 
 impl UInt for u8 {
     fn zero() -> Self {

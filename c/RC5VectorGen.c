@@ -322,10 +322,12 @@ int main()
     printf("\n");
     print_vector(128, 28, 32);
     printf("\n");
+    vectors = 1;
     print_vector(80, 4, 12);
     printf("\n");
+    vectors = 0;
     print_vector(256, 28, 32);
-    vectors = 1;
+    printf("\n");
     print_vector(24, 4, 0);
     printf("\n");
     return 0;

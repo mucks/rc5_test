@@ -6,6 +6,7 @@ use std::{
 use crate::{custom_uint::CustomUInt, from_bytes::FromBytes};
 use std::fmt::Debug;
 
+// The trait that all uints must implement, to be used in the RC5 algorithm.
 pub trait UInt:
     Add<Output = Self>
     + Sub<Output = Self>

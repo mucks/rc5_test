@@ -1,16 +1,18 @@
+use crate::error::Result;
+use crate::key_size::KeySize;
+use crate::uint::UInt;
+
 /*
 RC5 implementation in Rust
 algorithm source:
     https://en.wikipedia.org/wiki/RC5
 */
-use crate::error::Result;
-use crate::key_size::KeySize;
-use crate::uint::UInt;
-
 pub struct Rc5<T> {
+    // The size of the key in bytes.
     key_size: KeySize,
     // The number of rounds to use when encrypting data.
     rounds: u8,
+    // The expanded key.
     s: Vec<T>,
 }
 
@@ -136,7 +138,6 @@ where
         let mut l: Vec<T> = vec![T::zero(); self.c()];
         l[self.c() - 1] = T::zero();
 
-        // U80: L-values are reversed!
         for i in (0..self.b()).rev() {
             let iu = i / self.u();
 
@@ -173,6 +174,7 @@ where
         s
     }
 
+    // setup the key, and generate the S and L tables for the cipher
     pub fn setup(&mut self, key: Vec<u8>) {
         let mut l: Vec<T> = self.generate_L(&key);
         let mut s: Vec<T> = self.generate_S();
@@ -191,6 +193,8 @@ where
             a = s[i];
 
             let ab: T = a.wadd(b);
+
+            // U80 and U20 are creating the wrong values here in first and subsequent iterations
             l[j] = l[j].wadd(ab).rotl(ab.into_u32());
             b = l[j];
 

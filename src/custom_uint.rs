@@ -1,20 +1,26 @@
 use std::{
     fmt::{Binary, Display, Formatter, LowerHex},
-    num::{ParseIntError, Wrapping},
+    num::ParseIntError,
 };
 
 use crate::hex::{decode_hex, encode_hex};
 
+// Type aliases for common unsigned integer types
 pub type U8 = CustomUInt<8>;
 pub type U16 = CustomUInt<16>;
 pub type U32 = CustomUInt<32>;
 pub type U64 = CustomUInt<64>;
 pub type U128 = CustomUInt<128>;
+pub type U256 = CustomUInt<256>;
 
+// Type aliases for uncommon unsigned integer types
 pub type U24 = CustomUInt<24>;
 pub type U80 = CustomUInt<80>;
 
-pub type U256 = CustomUInt<256>;
+/*
+CustomUInt is a custom unsigned integer type that can be used to represent any unsigned integer type
+of any size. Written to be used for the test vectors in the RC5 algorithm.
+*/
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CustomUInt<const N: usize> {
@@ -25,10 +31,10 @@ impl<const N: usize> CustomUInt<N> {
     pub const MIN: Self = Self { bits: [false; N] };
     pub const MAX: Self = Self { bits: [true; N] };
 
-    pub fn to_u128(&self) -> u128 {
+    fn bits_to_u128(bits: Vec<bool>) -> u128 {
         let mut sum = 0;
-        for i in 0..N {
-            let bit = self.bits[N - i - 1];
+        for i in 0..bits.len() {
+            let bit = bits[bits.len() - i - 1];
 
             if bit {
                 sum += 2_u128.pow(i as u32);
@@ -37,8 +43,25 @@ impl<const N: usize> CustomUInt<N> {
         sum
     }
 
+    pub fn to_u128(&self) -> u128 {
+        Self::bits_to_u128(self.bits.to_vec())
+    }
+
     pub fn to_u32(&self) -> u32 {
-        self.to_u128() as u32
+        let mut bits = [false; 32];
+
+        for i in 0..32 {
+            if N >= 32 {
+                let bit_index = N - 32 + i;
+                bits[i] = self.bits[bit_index];
+            } else {
+                let bit_index = 32 - i;
+                if bit_index <= N {
+                    bits[i] = self.bits[N - bit_index];
+                }
+            }
+        }
+        Self::bits_to_u128(bits.to_vec()) as u32
     }
 
     fn to_bit_str(&self) -> String {
@@ -78,7 +101,6 @@ impl<const N: usize> CustomUInt<N> {
         Self { bits }
     }
 
-    //TODO: test this
     pub fn to_bytes(&self, hex: bool) -> Vec<u8> {
         let bit_str = self.to_bit_str();
         let mut bytes: Vec<u8> = vec![];
@@ -175,13 +197,13 @@ impl<const N: usize> Display for CustomUInt<N> {
         write!(f, "{}", self.to_u128())
     }
 }
+
 impl<const N: usize> LowerHex for CustomUInt<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_hex_str())
     }
 }
 
-// works fine!
 impl<const N: usize> std::ops::BitXor for CustomUInt<N> {
     type Output = Self;
 
@@ -269,19 +291,24 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
-    fn u32_conversion() {
+    fn to_u32() {
+        let v8 = 244_u8;
+        let r8 = U8::from_bytes(&v8.to_le_bytes(), false);
+        let v16 = 520_u16;
+        let r16 = U16::from_bytes(&v16.to_le_bytes(), false);
+        let v32 = 902166484_u32;
+        let r32 = U32::from_bytes(&v32.to_le_bytes(), false);
+
         let v64: u64 = 902166487400020018;
+        let r64 = U80::from_bytes(&v64.to_le_bytes(), false);
 
-        let u = U80::from_bytes(&v64.to_le_bytes(), false);
-
-        println!("{} == {}", u.to_u32(), v64 as u32);
-
-        assert_eq!(u.to_u32(), v64 as u32);
+        assert_eq!(r8.to_u32(), v8 as u32);
+        assert_eq!(r16.to_u32(), v16 as u32);
+        assert_eq!(r32.to_u32(), v32 as u32);
+        assert_eq!(r64.to_u32(), v64 as u32);
     }
 
     #[test]
-    #[ignore]
     fn rotate_right() {
         let u = U80::from_u128(2);
         let u = u.rotate_right(1);
@@ -289,7 +316,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn rotate_left() {
         let u = U80::from_u128(2);
         let u = u.rotate_left(1);
@@ -297,7 +323,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn rotate_left_wrap() {
         let u = U80::from_u128(2);
         let u = u.rotate_left(79);
@@ -311,7 +336,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn from_bytes() {
         let a = 11_u8.to_le_bytes();
         let b = 1_u8.to_le_bytes();
@@ -328,7 +352,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn to_bytes() {
         let a: Vec<u8> = vec![250, 209, 184, 0, 0, 0, 0, 0, 0, 0];
 
@@ -337,7 +360,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn from_hex() {
         let s = "40000000000000000000";
         let u = U80::from_hex_str(s).unwrap();
@@ -353,7 +375,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn to_hex() {
         let key = "02030405060708090a0b";
         let a: u128 = 9500362842338723695115;
@@ -363,7 +384,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn add() {
         let a = U80::from_u128(3);
         let b = U80::from_u128(3);
@@ -372,7 +392,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn sub() {
         let a = U80::from_u128(3);
         let b = U80::from_u128(2);
@@ -381,7 +400,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn wrapping_add() {
         let a = U80::from_u128(12);
         let b = U80::from_u128(1208925819614629174706172);
@@ -392,7 +410,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn wrapping_sub() {
         let a = U80::from_u128(1);
         let b = U80::from_u128(2);
@@ -401,7 +418,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn or() {
         let a = U80::from_u128(3);
         let b = U80::from_u128(4);
@@ -409,7 +425,6 @@ mod tests {
         assert_eq!((a | b).to_u128(), 7);
     }
     #[test]
-    #[ignore]
     fn xor() {
         let a = U80::from_u128(3);
         let b = U80::from_u128(5);
